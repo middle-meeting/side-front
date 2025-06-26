@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -10,35 +10,172 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { GraduationCap, Loader2, Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react"
+import { GraduationCap, Loader2, Eye, EyeOff, AlertCircle, CheckCircle, Mail, Clock, RefreshCw } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
-import { type RegisterRequest, UserRole, type AuthResponse } from "@/types/auth"
+import {
+  type StudentRegisterRequest,
+  type ProfessorRegisterRequest,
+  UserRole,
+  type AuthResponse,
+  type EmailVerificationResponse,
+} from "@/types/auth"
+
+type RegisterFormData = StudentRegisterRequest | ProfessorRegisterRequest
 
 export default function RegisterPage() {
   const router = useRouter()
   const { login } = useAuth()
 
-  const [formData, setFormData] = useState<RegisterRequest>({
+  const [selectedRole, setSelectedRole] = useState<UserRole>(UserRole.STUDENT)
+  const [formData, setFormData] = useState<RegisterFormData>({
     name: "",
+    school: "",
+    major: "",
+    grade: 1,
+    studentId: "",
     email: "",
+    verificationCode: "",
     password: "",
     confirmPassword: "",
-    role: UserRole.STUDENT,
-    studentId: "",
-    employeeId: "",
-    department: "",
-  })
+  } as StudentRegisterRequest)
 
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
 
+  // 이메일 인증 관련 상태
+  const [isEmailSent, setIsEmailSent] = useState(false)
+  const [isEmailVerified, setIsEmailVerified] = useState(false)
+  const [isEmailSending, setIsEmailSending] = useState(false)
+  const [isCodeVerifying, setIsCodeVerifying] = useState(false)
+  const [timeLeft, setTimeLeft] = useState(0)
+
+  // 타이머 효과
+  useEffect(() => {
+    if (timeLeft > 0) {
+      const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [timeLeft])
+
+  // 역할 변경 시 폼 데이터 초기화
+  const handleRoleChange = (role: UserRole) => {
+    setSelectedRole(role)
+    if (role === UserRole.STUDENT) {
+      setFormData({
+        name: "",
+        school: "",
+        major: "",
+        grade: 1,
+        studentId: "",
+        email: "",
+        verificationCode: "",
+        password: "",
+        confirmPassword: "",
+      } as StudentRegisterRequest)
+    } else {
+      setFormData({
+        name: "",
+        school: "",
+        major: "",
+        employeeId: "",
+        email: "",
+        verificationCode: "",
+        password: "",
+        confirmPassword: "",
+      } as ProfessorRegisterRequest)
+    }
+    setIsEmailSent(false)
+    setIsEmailVerified(false)
+    setTimeLeft(0)
+  }
+
+  // 이메일 인증번호 전송
+  const handleSendVerification = async () => {
+    if (!formData.email) {
+      setError("이메일을 입력해주세요.")
+      return
+    }
+
+    setIsEmailSending(true)
+    setError("")
+
+    try {
+      const response = await fetch("/api/auth/send-verification", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          role: selectedRole,
+        }),
+      })
+
+      const data: EmailVerificationResponse = await response.json()
+
+      if (data.success) {
+        setIsEmailSent(true)
+        setTimeLeft(data.expiresIn || 180) // 3분
+      } else {
+        setError(data.message)
+      }
+    } catch (error) {
+      console.error("Send verification error:", error)
+      setError("인증번호 전송 중 오류가 발생했습니다.")
+    } finally {
+      setIsEmailSending(false)
+    }
+  }
+
+  // 인증번호 확인
+  const handleVerifyCode = async () => {
+    if (!formData.verificationCode) {
+      setError("인증번호를 입력해주세요.")
+      return
+    }
+
+    setIsCodeVerifying(true)
+    setError("")
+
+    try {
+      const response = await fetch("/api/auth/verify-code", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          code: formData.verificationCode,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setIsEmailVerified(true)
+      } else {
+        setError(data.message)
+      }
+    } catch (error) {
+      console.error("Verify code error:", error)
+      setError("인증번호 확인 중 오류가 발생했습니다.")
+    } finally {
+      setIsCodeVerifying(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
 
-    // 클라이언트 사이드 유효성 검사
+    // 유효성 검사
+    if (!isEmailVerified) {
+      setError("이메일 인증을 완료해주세요.")
+      return
+    }
+
     if (formData.password !== formData.confirmPassword) {
       setError("비밀번호가 일치하지 않습니다.")
       return
@@ -46,16 +183,6 @@ export default function RegisterPage() {
 
     if (formData.password.length < 6) {
       setError("비밀번호는 6자 이상이어야 합니다.")
-      return
-    }
-
-    if (formData.role === UserRole.STUDENT && !formData.studentId) {
-      setError("학번을 입력해주세요.")
-      return
-    }
-
-    if (formData.role === UserRole.PROFESSOR && !formData.employeeId) {
-      setError("교번을 입력해주세요.")
       return
     }
 
@@ -67,7 +194,10 @@ export default function RegisterPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          role: selectedRole,
+        }),
       })
 
       const data: AuthResponse = await response.json()
@@ -95,9 +225,34 @@ export default function RegisterPage() {
 
   const passwordStrength = getPasswordStrength(formData.password)
 
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, "0")}`
+  }
+
+  const isFormValid = () => {
+    const baseValid =
+      formData.name &&
+      formData.school &&
+      formData.major &&
+      formData.email &&
+      formData.password &&
+      formData.confirmPassword &&
+      isEmailVerified
+
+    if (selectedRole === UserRole.STUDENT) {
+      const studentData = formData as StudentRegisterRequest
+      return baseValid && studentData.studentId && studentData.grade
+    } else {
+      const professorData = formData as ProfessorRegisterRequest
+      return baseValid && professorData.employeeId
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-lg">
         {/* 헤더 */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-4">
@@ -114,6 +269,20 @@ export default function RegisterPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* 역할 선택 */}
+              <div>
+                <Label htmlFor="role">역할</Label>
+                <Select value={selectedRole} onValueChange={handleRoleChange}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="역할을 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={UserRole.STUDENT}>학생</SelectItem>
+                    <SelectItem value={UserRole.PROFESSOR}>교수</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               {/* 이름 */}
               <div>
                 <Label htmlFor="name">이름</Label>
@@ -128,85 +297,175 @@ export default function RegisterPage() {
                 />
               </div>
 
-              {/* 역할 선택 */}
+              {/* 학교 */}
               <div>
-                <Label htmlFor="role">역할</Label>
-                <Select
-                  value={formData.role}
-                  onValueChange={(value: UserRole) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      role: value,
-                      studentId: value === UserRole.PROFESSOR ? "" : prev.studentId,
-                      employeeId: value === UserRole.STUDENT ? "" : prev.employeeId,
-                    }))
-                  }
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="역할을 선택하세요" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={UserRole.STUDENT}>학생</SelectItem>
-                    <SelectItem value={UserRole.PROFESSOR}>교수</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="school">학교</Label>
+                <Input
+                  id="school"
+                  type="text"
+                  value={formData.school}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, school: e.target.value }))}
+                  placeholder="학교명을 입력하세요"
+                  required
+                  className="mt-1"
+                />
               </div>
 
-              {/* 학번/교번 */}
-              {formData.role === UserRole.STUDENT ? (
+              {/* 전공 */}
+              <div>
+                <Label htmlFor="major">전공</Label>
+                <Input
+                  id="major"
+                  type="text"
+                  value={formData.major}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, major: e.target.value }))}
+                  placeholder="전공을 입력하세요"
+                  required
+                  className="mt-1"
+                />
+              </div>
+
+              {/* 학생 전용 필드 */}
+              {selectedRole === UserRole.STUDENT && (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label htmlFor="grade">학년</Label>
+                      <Select
+                        value={(formData as StudentRegisterRequest).grade?.toString()}
+                        onValueChange={(value) =>
+                          setFormData((prev) => ({ ...prev, grade: Number.parseInt(value) }) as StudentRegisterRequest)
+                        }
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue placeholder="학년" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">1학년</SelectItem>
+                          <SelectItem value="2">2학년</SelectItem>
+                          <SelectItem value="3">3학년</SelectItem>
+                          <SelectItem value="4">4학년</SelectItem>
+                          <SelectItem value="5">5학년</SelectItem>
+                          <SelectItem value="6">6학년</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="studentId">학번</Label>
+                      <Input
+                        id="studentId"
+                        type="text"
+                        value={(formData as StudentRegisterRequest).studentId}
+                        onChange={(e) =>
+                          setFormData((prev) => ({ ...prev, studentId: e.target.value }) as StudentRegisterRequest)
+                        }
+                        placeholder="학번"
+                        required
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* 교수 전용 필드 */}
+              {selectedRole === UserRole.PROFESSOR && (
                 <div>
-                  <Label htmlFor="studentId">학번</Label>
-                  <Input
-                    id="studentId"
-                    type="text"
-                    value={formData.studentId}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, studentId: e.target.value }))}
-                    placeholder="학번을 입력하세요"
-                    required
-                    className="mt-1"
-                  />
-                </div>
-              ) : (
-                <div>
-                  <Label htmlFor="employeeId">교번</Label>
+                  <Label htmlFor="employeeId">직번</Label>
                   <Input
                     id="employeeId"
                     type="text"
-                    value={formData.employeeId}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, employeeId: e.target.value }))}
-                    placeholder="교번을 입력하세요"
+                    value={(formData as ProfessorRegisterRequest).employeeId}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, employeeId: e.target.value }) as ProfessorRegisterRequest)
+                    }
+                    placeholder="직번을 입력하세요"
                     required
                     className="mt-1"
                   />
                 </div>
               )}
 
-              {/* 학과/교실 */}
-              <div>
-                <Label htmlFor="department">{formData.role === UserRole.STUDENT ? "학과" : "교실"}</Label>
-                <Input
-                  id="department"
-                  type="text"
-                  value={formData.department}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, department: e.target.value }))}
-                  placeholder={formData.role === UserRole.STUDENT ? "의학과" : "내과학교실"}
-                  className="mt-1"
-                />
-              </div>
-
               {/* 이메일 */}
               <div>
-                <Label htmlFor="email">이메일</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
-                  placeholder="이메일을 입력하세요"
-                  required
-                  className="mt-1"
-                />
+                <Label htmlFor="email">이메일 (아이디)</Label>
+                <div className="flex gap-2 mt-1">
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => {
+                      setFormData((prev) => ({ ...prev, email: e.target.value }))
+                      setIsEmailSent(false)
+                      setIsEmailVerified(false)
+                    }}
+                    placeholder="이메일을 입력하세요"
+                    required
+                    disabled={isEmailVerified}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleSendVerification}
+                    disabled={!formData.email || isEmailSending || (timeLeft > 0 && isEmailSent) || isEmailVerified}
+                    className="whitespace-nowrap"
+                  >
+                    {isEmailSending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : isEmailVerified ? (
+                      <CheckCircle className="w-4 h-4" />
+                    ) : timeLeft > 0 ? (
+                      <Clock className="w-4 h-4" />
+                    ) : (
+                      <Mail className="w-4 h-4" />
+                    )}
+                    <span className="ml-1">
+                      {isEmailVerified ? "인증완료" : timeLeft > 0 ? formatTime(timeLeft) : "인증번호 전송"}
+                    </span>
+                  </Button>
+                </div>
+                {isEmailSent && !isEmailVerified && (
+                  <p className="text-xs text-blue-600 mt-1">인증번호가 이메일로 전송되었습니다. (목업: 123456)</p>
+                )}
               </div>
+
+              {/* 인증번호 입력 */}
+              {isEmailSent && !isEmailVerified && (
+                <div>
+                  <Label htmlFor="verificationCode">인증번호</Label>
+                  <div className="flex gap-2 mt-1">
+                    <Input
+                      id="verificationCode"
+                      type="text"
+                      value={formData.verificationCode}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, verificationCode: e.target.value }))}
+                      placeholder="인증번호 6자리"
+                      maxLength={6}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleVerifyCode}
+                      disabled={!formData.verificationCode || isCodeVerifying}
+                    >
+                      {isCodeVerifying ? <Loader2 className="w-4 h-4 animate-spin" /> : "확인"}
+                    </Button>
+                    {timeLeft === 0 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={handleSendVerification}
+                        disabled={isEmailSending}
+                        size="sm"
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* 비밀번호 */}
               <div>
@@ -306,7 +565,7 @@ export default function RegisterPage() {
               )}
 
               {/* 회원가입 버튼 */}
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button type="submit" className="w-full" disabled={isLoading || !isFormValid()}>
                 {isLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />

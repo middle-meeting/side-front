@@ -8,10 +8,36 @@ export interface User {
   name: string
   email: string
   role: UserRole
-  studentId?: string // 학번 (학생인 경우)
-  employeeId?: string // 교번 (교수인 경우)
-  department?: string
+  school: string
+  major: string
+  grade?: number // 학년 (학생만)
+  studentId?: string // 학번 (학생만)
+  employeeId?: string // 직번 (교수만)
   avatar?: string
+  isEmailVerified: boolean
+}
+
+export interface StudentRegisterRequest {
+  name: string
+  school: string
+  major: string
+  grade: number
+  studentId: string
+  email: string
+  verificationCode: string
+  password: string
+  confirmPassword: string
+}
+
+export interface ProfessorRegisterRequest {
+  name: string
+  school: string
+  major: string
+  employeeId: string
+  email: string
+  verificationCode: string
+  password: string
+  confirmPassword: string
 }
 
 export interface LoginRequest {
@@ -20,15 +46,14 @@ export interface LoginRequest {
   role: UserRole
 }
 
-export interface RegisterRequest {
-  name: string
+export interface EmailVerificationRequest {
   email: string
-  password: string
-  confirmPassword: string
   role: UserRole
-  studentId?: string
-  employeeId?: string
-  department?: string
+}
+
+export interface PasswordResetRequest {
+  email: string
+  name: string
 }
 
 export interface AuthResponse {
@@ -36,4 +61,10 @@ export interface AuthResponse {
   message: string
   user?: User
   token?: string
+}
+
+export interface EmailVerificationResponse {
+  success: boolean
+  message: string
+  expiresIn?: number // 만료 시간 (초)
 }

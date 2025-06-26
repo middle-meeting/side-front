@@ -171,6 +171,13 @@ export default function LoginPage() {
                   "로그인"
                 )}
               </Button>
+
+              {/* 비밀번호 찾기 링크 */}
+              <div className="text-center">
+                <Link href="/forgot-password" className="text-sm text-blue-600 hover:text-blue-500">
+                  비밀번호를 잊으셨나요?
+                </Link>
+              </div>
             </form>
 
             {/* 데모 계정 */}
