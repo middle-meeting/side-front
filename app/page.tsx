@@ -196,9 +196,9 @@ export default function HomePage() {
                   강의 목록
                 </Button>
               </Link>
-              <Link href="/study/1">
+              {/* <Link href="/study/1">
                 <Button variant="ghost">환자 시뮬레이션</Button>
-              </Link>
+              </Link> */}
               <Button
                 variant="ghost"
                 onClick={() => {

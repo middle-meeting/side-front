@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { GraduationCap, Loader2, Eye, EyeOff, AlertCircle } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
-import { type LoginRequest, UserRole, type AuthResponse } from "@/types/auth"
+import { type LoginRequest, UserRole, type AuthResponse, CsrfToken, CsrfTokenResponse } from "@/types/auth"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -28,24 +28,44 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
 
+  const fetchCsrfToken = async (): Promise<CsrfToken | undefined | null> => {
+    try {
+      const response = await fetch("/api/auth/csrf", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        }
+      })
+      const data: CsrfTokenResponse = await response.json();
+      return data.code === 200 ? data.data : null;
+    }catch (error) {
+      return null;
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
-    setIsLoading(true)
+    setIsLoading(true);
 
     try {
+      const csrf = await fetchCsrfToken();
+      if(!csrf) {
+        throw new Error("토큰 오류");
+      }
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          [csrf.headerName]: csrf.token
         },
         body: JSON.stringify(formData),
       })
 
       const data: AuthResponse = await response.json()
 
-      if (data.success && data.user && data.token) {
-        login(data.user, data.token)
+      if (data.code === 200 && data.data) {
+        login(data.data, csrf.token)
         router.push("/")
       } else {
         setError(data.message)

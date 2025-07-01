@@ -18,6 +18,8 @@ import {
   UserRole,
   type AuthResponse,
   type EmailVerificationResponse,
+  CsrfToken,
+  CsrfTokenResponse,
 } from "@/types/auth"
 
 type RegisterFormData = StudentRegisterRequest | ProfessorRegisterRequest
@@ -27,17 +29,19 @@ export default function RegisterPage() {
   const { login } = useAuth()
 
   const [selectedRole, setSelectedRole] = useState<UserRole>(UserRole.STUDENT)
+  const [confirmPassword, setConfirmPassword] = useState<string>("");
   const [formData, setFormData] = useState<RegisterFormData>({
-    name: "",
-    school: "",
-    major: "",
-    grade: 1,
-    studentId: "",
-    email: "",
-    verificationCode: "",
-    password: "",
-    confirmPassword: "",
+      username: "",
+      password: "",
+      name: "",
+      role: UserRole.STUDENT,
+      school: "",
+      major: "",
+      grade: 1,
+      studentId: "",
+      verificationCode: ""
   } as StudentRegisterRequest)
+  const [csrfToken, setCsrfToken] = useState<CsrfToken | undefined | null>();
 
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -64,26 +68,35 @@ export default function RegisterPage() {
     setSelectedRole(role)
     if (role === UserRole.STUDENT) {
       setFormData({
+        username: "",
+        password: "",
         name: "",
+        role: UserRole.STUDENT,
         school: "",
         major: "",
         grade: 1,
         studentId: "",
-        email: "",
-        verificationCode: "",
-        password: "",
-        confirmPassword: "",
+        verificationCode: ""
       } as StudentRegisterRequest)
     } else {
       setFormData({
+        username: "",
+        password: "",
         name: "",
+        role: UserRole.PROFESSOR,
         school: "",
         major: "",
-        employeeId: "",
-        email: "",
-        verificationCode: "",
-        password: "",
-        confirmPassword: "",
+        grade: 1,
+        studentId: "",
+        verificationCode: ""
+        // name: "",
+        // school: "",
+        // major: "",
+        // employeeId: "",
+        // email: "",
+        // verificationCode: "",
+        // password: "",
+        // confirmPassword: "",
       } as ProfessorRegisterRequest)
     }
     setIsEmailSent(false)
@@ -91,9 +104,26 @@ export default function RegisterPage() {
     setTimeLeft(0)
   }
 
+  const fetchCsrfToken = async () => {
+    try {
+      const response = await fetch(`/api/auth/csrf`,{
+        credentials: "include",
+      })
+      const data: CsrfTokenResponse = await response.json();
+      console.log(data);
+      setCsrfToken(data.data);
+    }catch (error) {
+      setCsrfToken(null);
+    }
+  }
+  
+  useEffect(() =>{
+    fetchCsrfToken();
+  },[])
+
   // 이메일 인증번호 전송
   const handleSendVerification = async () => {
-    if (!formData.email) {
+    if (!formData.username) {
       setError("이메일을 입력해주세요.")
       return
     }
@@ -102,27 +132,31 @@ export default function RegisterPage() {
     setError("")
 
     try {
+      if(!csrfToken) {
+        throw new Error("토큰 오류");
+      }
       const response = await fetch("/api/auth/send-verification", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          [csrfToken?.headerName] : csrfToken.token
         },
         body: JSON.stringify({
-          email: formData.email,
-          role: selectedRole,
+          email: formData.username
         }),
+        credentials: "include"
       })
 
       const data: EmailVerificationResponse = await response.json()
 
-      if (data.success) {
+      if (data.code === 200) {
         setIsEmailSent(true)
-        setTimeLeft(data.expiresIn || 180) // 3분
+        setTimeLeft(180) // 3분
       } else {
         setError(data.message)
       }
     } catch (error) {
-      console.error("Send verification error:", error)
+      // console.error("Send verification error:", error)
       setError("인증번호 전송 중 오류가 발생했습니다.")
     } finally {
       setIsEmailSending(false)
@@ -140,26 +174,30 @@ export default function RegisterPage() {
     setError("")
 
     try {
+      if(!csrfToken) {
+        throw new Error("토큰 오류");
+      }
       const response = await fetch("/api/auth/verify-code", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          [csrfToken.headerName]: csrfToken.token
         },
         body: JSON.stringify({
-          email: formData.email,
-          code: formData.verificationCode,
+          email: formData.username,
+          verificationCode: formData.verificationCode,
         }),
       })
 
       const data = await response.json()
 
-      if (data.success) {
+      if (data.code === 200 && data.data?.verified) {
         setIsEmailVerified(true)
       } else {
         setError(data.message)
       }
     } catch (error) {
-      console.error("Verify code error:", error)
+      // console.error("Verify code error:", error)
       setError("인증번호 확인 중 오류가 발생했습니다.")
     } finally {
       setIsCodeVerifying(false)
@@ -176,7 +214,7 @@ export default function RegisterPage() {
       return
     }
 
-    if (formData.password !== formData.confirmPassword) {
+    if (formData.password !== confirmPassword) {
       setError("비밀번호가 일치하지 않습니다.")
       return
     }
@@ -189,10 +227,15 @@ export default function RegisterPage() {
     setIsLoading(true)
 
     try {
+      if (!csrfToken) {
+        throw new Error("토큰 오류");
+      }
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          [csrfToken.headerName]: csrfToken.token,
+          "X-Requested-With": "XMLHttpRequest"
         },
         body: JSON.stringify({
           ...formData,
@@ -202,14 +245,14 @@ export default function RegisterPage() {
 
       const data: AuthResponse = await response.json()
 
-      if (data.success && data.user && data.token) {
-        login(data.user, data.token)
+      if (data.code === 200 && data.data && csrfToken) {
+        login(data.data, csrfToken.token)
         router.push("/")
       } else {
         setError(data.message)
       }
     } catch (error) {
-      console.error("Register error:", error)
+      // console.error("Register error:", error)
       setError("회원가입 중 오류가 발생했습니다.")
     } finally {
       setIsLoading(false)
@@ -236,18 +279,19 @@ export default function RegisterPage() {
       formData.name &&
       formData.school &&
       formData.major &&
-      formData.email &&
+      formData.username &&
       formData.password &&
-      formData.confirmPassword &&
+      confirmPassword &&
       isEmailVerified
 
     if (selectedRole === UserRole.STUDENT) {
       const studentData = formData as StudentRegisterRequest
       return baseValid && studentData.studentId && studentData.grade
-    } else {
-      const professorData = formData as ProfessorRegisterRequest
-      return baseValid && professorData.employeeId
-    }
+    } 
+    // else {
+    //   const professorData = formData as ProfessorRegisterRequest
+    //   return baseValid && professorData.employeeId
+    // }
   }
 
   return (
@@ -369,7 +413,7 @@ export default function RegisterPage() {
               )}
 
               {/* 교수 전용 필드 */}
-              {selectedRole === UserRole.PROFESSOR && (
+              {/* {selectedRole === UserRole.PROFESSOR && (
                 <div>
                   <Label htmlFor="employeeId">직번</Label>
                   <Input
@@ -384,7 +428,7 @@ export default function RegisterPage() {
                     className="mt-1"
                   />
                 </div>
-              )}
+              )} */}
 
               {/* 이메일 */}
               <div>
@@ -393,9 +437,9 @@ export default function RegisterPage() {
                   <Input
                     id="email"
                     type="email"
-                    value={formData.email}
+                    value={formData.username}
                     onChange={(e) => {
-                      setFormData((prev) => ({ ...prev, email: e.target.value }))
+                      setFormData((prev) => ({ ...prev, username: e.target.value }))
                       setIsEmailSent(false)
                       setIsEmailVerified(false)
                     }}
@@ -408,7 +452,7 @@ export default function RegisterPage() {
                     type="button"
                     variant="outline"
                     onClick={handleSendVerification}
-                    disabled={!formData.email || isEmailSending || (timeLeft > 0 && isEmailSent) || isEmailVerified}
+                    disabled={!formData.username || isEmailSending || (timeLeft > 0 && isEmailSent) || isEmailVerified}
                     className="whitespace-nowrap"
                   >
                     {isEmailSending ? (
@@ -520,8 +564,8 @@ export default function RegisterPage() {
                   <Input
                     id="confirmPassword"
                     type={showConfirmPassword ? "text" : "password"}
-                    value={formData.confirmPassword}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, confirmPassword: e.target.value }))}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="비밀번호를 다시 입력하세요"
                     required
                   />
@@ -539,9 +583,9 @@ export default function RegisterPage() {
                     )}
                   </Button>
                 </div>
-                {formData.confirmPassword && (
+                {confirmPassword && (
                   <div className="mt-1 flex items-center gap-1">
-                    {formData.password === formData.confirmPassword ? (
+                    {formData.password === confirmPassword ? (
                       <>
                         <CheckCircle className="w-3 h-3 text-green-500" />
                         <span className="text-xs text-green-500">비밀번호가 일치합니다</span>

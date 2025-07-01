@@ -5,39 +5,46 @@ export enum UserRole {
 
 export interface User {
   id: number
+  username: string
   name: string
-  email: string
   role: UserRole
-  school: string
-  major: string
+  school?: string
+  major?: string
   grade?: number // 학년 (학생만)
   studentId?: string // 학번 (학생만)
   employeeId?: string // 직번 (교수만)
-  avatar?: string
-  isEmailVerified: boolean
 }
 
 export interface StudentRegisterRequest {
+  username: string
+  password: string
+  role: UserRole
   name: string
   school: string
   major: string
   grade: number
   studentId: string
-  email: string
   verificationCode: string
-  password: string
-  confirmPassword: string
 }
 
 export interface ProfessorRegisterRequest {
+  username: string
+  password: string
+  role: UserRole
   name: string
   school: string
   major: string
-  employeeId: string
-  email: string
+  grade: number
+  studentId: string
   verificationCode: string
-  password: string
-  confirmPassword: string
+  // name: string
+  // school: string
+  // major: string
+  // employeeId: string
+  // email: string
+  // verificationCode: string
+  // password: string
+  // confirmPassword: string
 }
 
 export interface LoginRequest {
@@ -57,14 +64,31 @@ export interface PasswordResetRequest {
 }
 
 export interface AuthResponse {
-  success: boolean
+  status: string
+  code: number
   message: string
-  user?: User
-  token?: string
+  data?: User
 }
 
 export interface EmailVerificationResponse {
-  success: boolean
+  status: string
+  code: number
   message: string
-  expiresIn?: number // 만료 시간 (초)
+  data?: {
+    message: string
+  }
+}
+
+export interface CsrfToken {
+    token: string
+    headerName: string
+    parameterName: string
+}
+
+export interface CsrfTokenResponse {
+  status: string
+  code: number
+  message: string
+  data?: CsrfToken
+  error?: string
 }
