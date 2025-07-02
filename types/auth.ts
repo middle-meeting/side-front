@@ -48,9 +48,9 @@ export interface ProfessorRegisterRequest {
 }
 
 export interface LoginRequest {
-  email: string
+  username: string
   password: string
-  role: UserRole
+  // role: UserRole
 }
 
 export interface EmailVerificationRequest {

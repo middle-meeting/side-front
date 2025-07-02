@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -19,29 +19,31 @@ export default function LoginPage() {
   const { login } = useAuth()
 
   const [formData, setFormData] = useState<LoginRequest>({
-    email: "",
+    username: "",
     password: "",
-    role: UserRole.STUDENT,
+    // role: UserRole.STUDENT,
   })
 
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
+  const [csrfToken, setCsrfToken] = useState<CsrfToken | undefined | null>();
 
-  const fetchCsrfToken = async (): Promise<CsrfToken | undefined | null> => {
-    try {
-      const response = await fetch("/api/auth/csrf", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        }
-      })
-      const data: CsrfTokenResponse = await response.json();
-      return data.code === 200 ? data.data : null;
-    }catch (error) {
-      return null;
+  const fetchCsrfToken = async () => {
+      try {
+        const response = await fetch(`/api/auth/csrf`,{
+          credentials: "include",
+        })
+        const data: CsrfTokenResponse = await response.json();
+        setCsrfToken(data.data);
+      }catch (error) {
+        setCsrfToken(null);
+      }
     }
-  }
+    
+    useEffect(() =>{
+      fetchCsrfToken();
+    },[])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -49,23 +51,24 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const csrf = await fetchCsrfToken();
-      if(!csrf) {
+      if(!csrfToken) {
         throw new Error("토큰 오류");
       }
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          [csrf.headerName]: csrf.token
+           "Content-Type": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
+          [csrfToken?.headerName] : csrfToken.token
         },
         body: JSON.stringify(formData),
+        credentials: "include",
       })
 
       const data: AuthResponse = await response.json()
-
-      if (data.code === 200 && data.data) {
-        login(data.data, csrf.token)
+      console.log(data);
+      if (data.code === 200 && data.data && csrfToken) {
+        login(data.data, csrfToken.token)
         router.push("/")
       } else {
         setError(data.message)
@@ -81,13 +84,13 @@ export default function LoginPage() {
   const handleDemoLogin = (role: UserRole) => {
     if (role === UserRole.STUDENT) {
       setFormData({
-        email: "student@medical.edu",
+        username: "student@medical.edu",
         password: "password123",
         role: UserRole.STUDENT,
       })
     } else {
       setFormData({
-        email: "professor@medical.edu",
+        username: "professor@medical.edu",
         password: "password123",
         role: UserRole.PROFESSOR,
       })
@@ -136,8 +139,8 @@ export default function LoginPage() {
                 <Input
                   id="email"
                   type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
+                  value={formData.username}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, username: e.target.value }))}
                   placeholder="이메일을 입력하세요"
                   required
                   className="mt-1"
