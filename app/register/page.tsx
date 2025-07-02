@@ -110,7 +110,6 @@ export default function RegisterPage() {
         credentials: "include",
       })
       const data: CsrfTokenResponse = await response.json();
-      console.log(data);
       setCsrfToken(data.data);
     }catch (error) {
       setCsrfToken(null);
@@ -139,6 +138,7 @@ export default function RegisterPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
           [csrfToken?.headerName] : csrfToken.token
         },
         body: JSON.stringify({
@@ -181,17 +181,19 @@ export default function RegisterPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
           [csrfToken.headerName]: csrfToken.token
         },
         body: JSON.stringify({
           email: formData.username,
           verificationCode: formData.verificationCode,
         }),
+        credentials: "include"
       })
 
       const data = await response.json()
 
-      if (data.code === 200 && data.data?.verified) {
+      if (data.code === 200) {
         setIsEmailVerified(true)
       } else {
         setError(data.message)
@@ -234,23 +236,25 @@ export default function RegisterPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          [csrfToken.headerName]: csrfToken.token,
-          "X-Requested-With": "XMLHttpRequest"
+          "X-Requested-With": "XMLHttpRequest",
+          [csrfToken.headerName]: csrfToken.token
         },
         body: JSON.stringify({
           ...formData,
           role: selectedRole,
         }),
+        credentials: "include"
       })
 
       const data: AuthResponse = await response.json()
 
-      if (data.code === 200 && data.data && csrfToken) {
-        login(data.data, csrfToken.token)
-        router.push("/")
+      if (data.code === 200) {
+        // login(data.data, csrfToken.token)
+        router.push("/login")
       } else {
         setError(data.message)
       }
+      setIsLoading(false)
     } catch (error) {
       // console.error("Register error:", error)
       setError("회원가입 중 오류가 발생했습니다.")
@@ -470,7 +474,7 @@ export default function RegisterPage() {
                   </Button>
                 </div>
                 {isEmailSent && !isEmailVerified && (
-                  <p className="text-xs text-blue-600 mt-1">인증번호가 이메일로 전송되었습니다. (목업: 123456)</p>
+                  <p className="text-xs text-blue-600 mt-1">인증번호가 이메일로 전송되었습니다.</p>
                 )}
               </div>
 

@@ -1,4 +1,4 @@
-import type { NextRequest } from "next/server"
+import { NextResponse, type NextRequest } from "next/server"
 
 interface VerifyCodeResponse {
   status: string
@@ -12,9 +12,22 @@ interface VerifyCodeResponse {
 
 export async function POST(request: NextRequest) {
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/signup/verify-email`, request)
+    const body = await request.json();
+    const XSRFToken = request.headers.get("X-XSRF-TOKEN") || "";
+    const cookie = request.headers.get("cookie");
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/signup/verify-email`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Requested-With": "XMLHttpRequest",
+        "X-XSRF-TOKEN": XSRFToken,
+        ...(cookie ? { "cookie": cookie } : {}),
+      },
+      body: JSON.stringify(body)
+    })
     const data: VerifyCodeResponse = await response.json();
-    return data as VerifyCodeResponse;
+    console.log("Verify code response:", data);
+    return NextResponse.json(data);
   } catch (error) {
     console.error("Verify code error:", error)
     return Response.json(

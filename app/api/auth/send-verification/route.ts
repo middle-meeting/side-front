@@ -4,23 +4,19 @@ import type { EmailVerificationRequest, EmailVerificationResponse } from "@/type
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    console.log(body);
-    console.log(request.headers.get("X-XSRF-TOKEN"));
+    const XSRFToken = request.headers.get("X-XSRF-TOKEN") || "";
     const cookie = request.headers.get("cookie");
-    console.log(cookie);
     const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/signup/send-verification`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "X-Requested-With": "XMLHttpRequest",
-        "X-XSRF-TOKEN": request.headers.get("X-XSRF-TOKEN") || "",
-        ...(cookie ? { "cookie": cookie } : {})
+        "X-XSRF-TOKEN": XSRFToken,
+        ...(cookie ? { "cookie": cookie } : {}),
       },
       body: JSON.stringify(body)
     })
-    console.log(response);
     const data : EmailVerificationResponse = await response.json();
-    console.log(data)
     return NextResponse.json(data);
   } catch (error) {
     console.error("Email verification error:", error)
