@@ -1,13 +1,14 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext, useState, useEffect } from "react"
-import type { User } from "@/types/auth"
+import { createContext, useContext, useState, useEffect, useCallback } from "react"
+import { usePathname, useRouter } from "next/navigation"
+import type { User, AuthResponse } from "@/types/auth"
 
 interface AuthContextType {
   user: User | null
-  login: (user: User, token: string) => void
-  logout: () => void
+  login: (user: User) => void
+  logout: () => Promise<void>
   isLoading: boolean
 }
 
@@ -16,38 +17,61 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const router = useRouter()
+  const pathname = usePathname()
 
-  useEffect(() => {
-    // 페이지 로드 시 localStorage에서 사용자 정보 복원
-    const savedUser = localStorage.getItem("user")
-    const savedToken = localStorage.getItem("token")
+  const fetchUser = useCallback(async () => {
+    try {
+      const response = await fetch("/api/auth/me")
+      const data: AuthResponse = await response.json()
 
-    if (savedUser && savedToken) {
-      try {
-        setUser(JSON.parse(savedUser))
-      } catch (error) {
-        console.error("Failed to parse saved user:", error)
-        localStorage.removeItem("user")
-        localStorage.removeItem("token")
+      if (response.ok && data.data) {
+        setUser(data.data)
+      } else {
+        setUser(null)
       }
+    } catch (error) {
+      setUser(null)
+    } finally {
+      setIsLoading(false)
     }
-
-    setIsLoading(false)
   }, [])
 
-  const login = (user: User, token: string) => {
+  useEffect(() => {
+    fetchUser()
+  }, [fetchUser])
+
+  // 라우트 보호 로직
+  useEffect(() => {
+    const publicPaths = ["/login", "/register", "/forgot-password"]
+    const isPublicPath = publicPaths.includes(pathname)
+
+    if (!isLoading && !user && !isPublicPath) {
+      router.push("/login")
+    }
+  }, [user, isLoading, pathname, router])
+
+  const login = (user: User) => {
     setUser(user)
-    localStorage.setItem("user", JSON.stringify(user))
-    localStorage.setItem("token", token)
   }
 
-  const logout = () => {
-    setUser(null)
-    localStorage.removeItem("user")
-    localStorage.removeItem("token")
+  const logout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST", credentials: "include" })
+    } catch (error) {
+      console.error("Logout failed", error)
+    } finally {
+      setUser(null)
+      // 로그인 페이지 또는 홈으로 리디렉션
+      router.push("/login")
+    }
   }
 
-  return <AuthContext.Provider value={{ user, login, logout, isLoading }}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={{ user, login, logout, isLoading }}>
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
 export function useAuth() {

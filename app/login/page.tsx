@@ -21,7 +21,6 @@ export default function LoginPage() {
   const [formData, setFormData] = useState<LoginRequest>({
     username: "",
     password: "",
-    // role: UserRole.STUDENT,
   })
 
   const [showPassword, setShowPassword] = useState(false)
@@ -68,7 +67,7 @@ export default function LoginPage() {
       const data: AuthResponse = await response.json()
       console.log(data);
       if (data.code === 200 && data.data && csrfToken) {
-        login(data.data, csrfToken.token)
+        login(data.data)
         router.push("/")
       } else {
         setError(data.message)
@@ -86,13 +85,11 @@ export default function LoginPage() {
       setFormData({
         username: "student@medical.edu",
         password: "password123",
-        role: UserRole.STUDENT,
       })
     } else {
       setFormData({
         username: "professor@medical.edu",
         password: "password123",
-        role: UserRole.PROFESSOR,
       })
     }
   }
@@ -116,22 +113,7 @@ export default function LoginPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* 역할 선택 */}
-              <div>
-                <Label htmlFor="role">역할</Label>
-                <Select
-                  value={formData.role}
-                  onValueChange={(value: UserRole) => setFormData((prev) => ({ ...prev, role: value }))}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="역할을 선택하세요" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={UserRole.STUDENT}>학생</SelectItem>
-                    <SelectItem value={UserRole.PROFESSOR}>교수</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              
 
               {/* 이메일 */}
               <div>

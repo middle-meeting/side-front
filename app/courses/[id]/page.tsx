@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -21,8 +21,11 @@ import {
   Circle,
   ClockIcon,
   Eye,
+  Loader2,
 } from "lucide-react"
 import Link from "next/link"
+import { useRouter, useParams } from "next/navigation"
+import { useAuth } from "@/contexts/auth-context"
 
 // 타입 정의
 enum GenderType {
@@ -35,30 +38,18 @@ enum AssignmentStatus {
   IN_PROGRESS = "IN_PROGRESS",
   SUBMITTED = "SUBMITTED",
   GRADED = "GRADED",
+  DRAFT = "DRAFT",
 }
 
 interface Assignment {
   id: number
   title: string
-  personaName: string
-  personaAge: number
-  personaGender: GenderType
-  personaSymptom: string
-  personaHistory: string
-  maxTurns: number
   dueDate: string
-  courseName: string
-  semester: string
-  professorName: string
+  objective: string
   status: AssignmentStatus
-  currentTurns?: number
-  submittedAt?: string
-  gradedAt?: string
-  score?: number
-  description: string
 }
 
-interface Course {
+interface CourseDetail {
   id: number
   name: string
   professorName: string
@@ -68,7 +59,35 @@ interface Course {
   credits: number
 }
 
-// Badge 컴포넌트
+interface AssignmentResponseData {
+  content: Assignment[];
+  page: number;
+  size: number;
+  hasNext: boolean;
+  hasPrevious: boolean;
+  first: boolean;
+  last: boolean;
+}
+
+interface CourseDetailResponseData {
+  id: number;
+  name: string;
+  professorName: string;
+  semester: string;
+  description: string;
+  courseCode: string;
+  credits: number;
+}
+
+interface ApiResponse<T> {
+  status: string;
+  code: number;
+  message: string;
+  data: T | null;
+  error: any;
+}
+
+// Badge 컴포넌트 (기존 유지)
 function Badge({
   children,
   className = "",
@@ -101,193 +120,216 @@ function Badge({
   return <div className={`${baseClasses} ${variantClasses} ${className}`}>{children}</div>
 }
 
-// 샘플 강의 데이터
-const sampleCourse: Course = {
-  id: 1,
-  name: "내과학 실습",
-  professorName: "이진료",
-  semester: "2024-1학기",
-  description: "내과 질환의 진단과 치료에 대한 실습 과정",
-  courseCode: "MED301",
-  credits: 3,
-}
+export default function CourseAssignmentsPage() {
+  const params = useParams();
+  const courseId = params.id as string;
+  const router = useRouter();
+  const { user, isLoading: isLoadingAuth } = useAuth();
 
-// 샘플 과제 데이터
-const sampleAssignments: Assignment[] = [
-  {
-    id: 1,
-    title: "급성 복통 환자 진료 실습",
-    personaName: "김영희",
-    personaAge: 45,
-    personaGender: GenderType.FEMALE,
-    personaSymptom: "오른쪽 하복부 통증, 발열, 구토",
-    personaHistory: "고혈압 약물 복용 중, 2년 전 담낭절제술 시행",
-    maxTurns: 20,
-    dueDate: "2024-01-15T23:59:00",
-    courseName: "내과학 실습",
-    semester: "2024-1학기",
-    professorName: "이진료",
-    status: AssignmentStatus.IN_PROGRESS,
-    currentTurns: 8,
-    description: "급성 충수염이 의심되는 중년 여성 환자의 진료 과정을 시뮬레이션합니다.",
-  },
-  {
-    id: 2,
-    title: "당뇨병 환자 상담 케이스",
-    personaName: "박당뇨",
-    personaAge: 58,
-    personaGender: GenderType.MALE,
-    personaSymptom: "다음, 다뇨, 다식, 체중감소",
-    personaHistory: "가족력: 부모 모두 당뇨병, 흡연력 30년",
-    maxTurns: 15,
-    dueDate: "2024-01-20T23:59:00",
-    courseName: "내과학 실습",
-    semester: "2024-1학기",
-    professorName: "이진료",
-    status: AssignmentStatus.NOT_STARTED,
-    description: "제2형 당뇨병 신규 진단 환자의 초기 상담 및 교육 과정을 연습합니다.",
-  },
-  {
-    id: 3,
-    title: "고혈압 환자 추적관찰",
-    personaName: "최고혈",
-    personaAge: 62,
-    personaGender: GenderType.FEMALE,
-    personaSymptom: "두통, 어지러움, 목 뒤 뻣뻣함",
-    personaHistory: "고혈압 진단 5년, 약물 복용 불규칙",
-    maxTurns: 12,
-    dueDate: "2024-01-10T23:59:00",
-    courseName: "내과학 실습",
-    semester: "2024-1학기",
-    professorName: "이진료",
-    status: AssignmentStatus.GRADED,
-    currentTurns: 12,
-    submittedAt: "2024-01-08T14:30:00",
-    gradedAt: "2024-01-09T10:15:00",
-    score: 85,
-    description: "고혈압 환자의 약물 순응도 개선 및 생활습관 교정 상담을 진행합니다.",
-  },
-  {
-    id: 4,
-    title: "흉통 환자 응급처치",
-    personaName: "김흉통",
-    personaAge: 55,
-    personaGender: GenderType.MALE,
-    personaSymptom: "갑작스런 가슴 통증, 호흡곤란, 식은땀",
-    personaHistory: "흡연력 25년, 고지혈증, 가족력: 심근경색",
-    maxTurns: 25,
-    dueDate: "2024-01-25T23:59:00",
-    courseName: "내과학 실습",
-    semester: "2024-1학기",
-    professorName: "이진료",
-    status: AssignmentStatus.SUBMITTED,
-    currentTurns: 25,
-    submittedAt: "2024-01-12T16:45:00",
-    description: "급성 심근경색이 의심되는 환자의 응급 진료 과정을 시뮬레이션합니다.",
-  },
-  {
-    id: 5,
-    title: "호흡곤란 환자 진단",
-    personaName: "이호흡",
-    personaAge: 67,
-    personaGender: GenderType.FEMALE,
-    personaSymptom: "점진적 호흡곤란, 기침, 가래",
-    personaHistory: "만성폐쇄성폐질환, 흡연력 40년",
-    maxTurns: 18,
-    dueDate: "2024-01-18T23:59:00",
-    courseName: "내과학 실습",
-    semester: "2024-1학기",
-    professorName: "이진료",
-    status: AssignmentStatus.IN_PROGRESS,
-    currentTurns: 3,
-    description: "COPD 급성 악화 환자의 진료 및 치료 계획 수립을 연습합니다.",
-  },
-  {
-    id: 6,
-    title: "복부팽만 환자 감별진단",
-    personaName: "정복부",
-    personaAge: 72,
-    personaGender: GenderType.MALE,
-    personaSymptom: "복부팽만, 식욕부진, 체중감소",
-    personaHistory: "간경화 병력, 음주력 30년",
-    maxTurns: 20,
-    dueDate: "2024-01-12T23:59:00",
-    courseName: "내과학 실습",
-    semester: "2024-1학기",
-    professorName: "이진료",
-    status: AssignmentStatus.GRADED,
-    currentTurns: 20,
-    submittedAt: "2024-01-11T16:45:00",
-    gradedAt: "2024-01-12T09:30:00",
-    score: 92,
-    description: "간경화 환자의 복수 및 합병증 관리에 대한 케이스 스터디입니다.",
-  },
-]
+  const [courseDetail, setCourseDetail] = useState<CourseDetail | null>(null);
+  const [loadingCourseDetail, setLoadingCourseDetail] = useState(true);
+  const [errorCourseDetail, setErrorCourseDetail] = useState<string | null>(null);
 
-export default function CourseAssignmentsPage({ params }: { params: { id: string } }) {
-  const [selectedStatus, setSelectedStatus] = useState<string>("all")
+  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [loadingAssignments, setLoadingAssignments] = useState(true);
+  const [errorAssignments, setErrorAssignments] = useState<string | null>(null);
+  const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(0);
+  const [hasNextPage, setHasNextPage] = useState(true);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
 
-  // 상태별 과제 필터링
-  const filteredAssignments =
-    selectedStatus === "all"
-      ? sampleAssignments
-      : sampleAssignments.filter((assignment) => assignment.status === selectedStatus)
+  const observerTarget = useRef<HTMLDivElement>(null);
+
+  // 강의 상세 정보 가져오기
+  const fetchCourseDetail = useCallback(async () => {
+    setLoadingCourseDetail(true);
+    setErrorCourseDetail(null);
+    // API 호출 대신 하드코딩된 데이터 사용
+    setTimeout(() => {
+      setCourseDetail({
+        id: parseInt(courseId),
+        name: "기본 강의 제목",
+        professorName: "김교수",
+        semester: "2024년 1학기",
+        description: "이 강의는 아직 백엔드 API가 개발되지 않아 하드코딩된 데이터로 표시됩니다.",
+        courseCode: "CS000",
+        credits: 3,
+      });
+      setLoadingCourseDetail(false);
+    }, 500); // 0.5초 지연 시뮬레이션
+  }, [courseId]);
+
+  // 과제 목록 가져오기
+  const fetchAssignments = useCallback(async (status: string, page: number, append: boolean = false) => {
+    if (append) {
+      setIsFetchingMore(true);
+    } else {
+      setLoadingAssignments(true);
+      setAssignments([]); // 새 필터 또는 첫 로드 시 기존 과제 초기화
+      setCurrentPage(0);
+      setHasNextPage(true);
+    }
+    setErrorAssignments(null);
+
+    try {
+      const statusQuery = status === "all" ? "" : `&status=${status}`;
+      const response = await fetch(`/api/student/courses/${courseId}/assignments?page=${page}${statusQuery}`, {
+        credentials: "include",
+      });
+      const data: ApiResponse<AssignmentResponseData> = await response.json();
+
+      if (response.ok && data.data && data.data.content) {
+        if (append) {
+          setAssignments((prevAssignments) => [...prevAssignments, ...data.data!.content]);
+        } else {
+          setAssignments(data.data.content);
+        }
+        setHasNextPage(data.data.hasNext);
+        setCurrentPage(data.data.page);
+      } else {
+        setErrorAssignments(data.message || "과제 목록을 불러오는데 실패했습니다.");
+        if (!append) setAssignments([]);
+      }
+    } catch (error) {
+      console.error("Failed to fetch assignments:", error);
+      setErrorAssignments("과제 목록을 불러오는 중 오류가 발생했습니다.");
+      if (!append) setAssignments([]);
+    } finally {
+      if (append) {
+        setIsFetchingMore(false);
+      }
+      else {
+        setLoadingAssignments(false);
+      }
+    }
+  }, [courseId]);
+
+  // 초기 로드 및 라우트 보호
+  useEffect(() => {
+    if (!isLoadingAuth && !user) {
+      router.push("/login");
+    } else if (user) {
+      fetchCourseDetail();
+    }
+  }, [isLoadingAuth, user, router, fetchCourseDetail]);
+
+  // 과제 필터 또는 courseId 변경 시 과제 목록 재로드
+  useEffect(() => {
+    if (user && courseDetail) { // courseDetail이 로드된 후에 과제 로드 시작
+      fetchAssignments(selectedStatus, 0, false);
+    }
+  }, [user, courseDetail, selectedStatus, fetchAssignments]);
+
+  // 무한 스크롤 IntersectionObserver 설정
+  useEffect(() => {
+    if (!observerTarget.current) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingMore && !loadingAssignments) {
+          setCurrentPage((prevPage) => prevPage + 1);
+        }
+      },
+      { threshold: 1.0 }
+    );
+
+    observer.observe(observerTarget.current);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [hasNextPage, isFetchingMore, loadingAssignments]);
+
+  // currentPage가 변경될 때 추가 데이터 로드
+  useEffect(() => {
+    if (currentPage > 0 && hasNextPage && !isFetchingMore && !loadingAssignments) {
+      fetchAssignments(selectedStatus, currentPage, true);
+    }
+  }, [currentPage, selectedStatus, fetchAssignments, hasNextPage, isFetchingMore, loadingAssignments]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("ko-KR", {
+      year: "numeric",
       month: "long",
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
-    })
-  }
+    });
+  };
 
   const getStatusInfo = (status: AssignmentStatus) => {
     switch (status) {
       case AssignmentStatus.NOT_STARTED:
+      case AssignmentStatus.IN_PROGRESS: // IN_PROGRESS도 진행전으로 처리
         return {
           variant: "secondary" as const,
           text: "진행전",
           icon: <Circle className="w-4 h-4" />,
-        }
-      case AssignmentStatus.IN_PROGRESS:
+        };
+      case AssignmentStatus.DRAFT:
         return {
           variant: "warning" as const,
           text: "진행중",
           icon: <Play className="w-4 h-4" />,
-        }
+        };
       case AssignmentStatus.SUBMITTED:
         return {
           variant: "default" as const,
-          text: "채점 대기중",
+          text: "제출완료",
           icon: <ClockIcon className="w-4 h-4" />,
-        }
+        };
       case AssignmentStatus.GRADED:
         return {
           variant: "success" as const,
-          text: "채점 완료",
-          icon: <CheckCircle className="w-4 h-4" />,
-        }
+          text: "결과보기",
+          icon: <Eye className="w-4 h-4" />,
+        };
+      default:
+        return {
+          variant: "secondary" as const,
+          text: "알 수 없음",
+          icon: <Circle className="w-4 h-4" />,
+        };
     }
+  };
+
+  const isOverdue = (dueDate: string) => {
+    return new Date(dueDate) < new Date();
+  };
+
+  if (isLoadingAuth || loadingCourseDetail) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <GraduationCap className="w-12 h-12 text-blue-600 mx-auto mb-4 animate-pulse" />
+          <p className="text-gray-600">강의 정보를 불러오는 중...</p>
+        </div>
+      </div>
+    );
   }
 
-  const getGenderText = (gender: GenderType) => {
-    return gender === GenderType.MALE ? "남성" : "여성"
+  if (errorCourseDetail) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center text-red-600">
+          <p>{errorCourseDetail}</p>
+        </div>
+      </div>
+    );
   }
 
-  const isOverdue = (dueDate: string, status: AssignmentStatus) => {
-    return new Date(dueDate) < new Date() && status === AssignmentStatus.NOT_STARTED
+  if (!user) {
+    return null;
   }
 
-  const getProgressPercentage = (current = 0, max: number) => {
-    return Math.round((current / max) * 100)
-  }
-
-  const getScoreColor = (score: number) => {
-    if (score >= 90) return "text-green-600"
-    if (score >= 80) return "text-blue-600"
-    if (score >= 70) return "text-yellow-600"
-    return "text-red-600"
+  if (!courseDetail) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center text-gray-600">
+          <p>강의 정보를 찾을 수 없습니다.</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -322,31 +364,26 @@ export default function CourseAssignmentsPage({ params }: { params: { id: string
             강의 목록
           </Link>
           <ChevronRight className="w-4 h-4" />
-          <span className="text-gray-900">{sampleCourse.name}</span>
+          <span className="text-gray-900">{courseDetail.name}</span>
         </div>
 
         {/* 강의 정보 헤더 */}
         <div className="bg-white rounded-lg border border-gray-200 p-6 mb-8">
           <div className="flex items-start justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">{sampleCourse.name}</h1>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">{courseDetail.name}</h1>
               <div className="flex items-center gap-4 text-gray-600 mb-4">
                 <div className="flex items-center gap-1">
                   <User className="w-4 h-4" />
-                  <span>{sampleCourse.professorName} 교수</span>
+                  <span>{courseDetail.professorName} 교수</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <Calendar className="w-4 h-4" />
-                  <span>{sampleCourse.semester}</span>
+                  <span>{courseDetail.semester}</span>
                 </div>
-                <div className="flex items-center gap-1">
-                  <BookOpen className="w-4 h-4" />
-                  <span>
-                    {sampleCourse.courseCode} • {sampleCourse.credits}학점
-                  </span>
-                </div>
+                
               </div>
-              <p className="text-gray-700">{sampleCourse.description}</p>
+              <p className="text-gray-700">{courseDetail.description}</p>
             </div>
             <Link href="/">
               <Button variant="outline" size="sm">
@@ -361,21 +398,7 @@ export default function CourseAssignmentsPage({ params }: { params: { id: string
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-4">
             <h2 className="text-xl font-semibold text-gray-900">케이스 스터디 과제</h2>
-            <div className="flex items-center gap-4 text-sm text-gray-600">
-              <span>전체 {sampleAssignments.length}개</span>
-              <span>•</span>
-              <span className="text-green-600">
-                완료 {sampleAssignments.filter((a) => a.status === AssignmentStatus.GRADED).length}개
-              </span>
-              <span>•</span>
-              <span className="text-yellow-600">
-                진행중 {sampleAssignments.filter((a) => a.status === AssignmentStatus.IN_PROGRESS).length}개
-              </span>
-              <span>•</span>
-              <span className="text-blue-600">
-                채점대기 {sampleAssignments.filter((a) => a.status === AssignmentStatus.SUBMITTED).length}개
-              </span>
-            </div>
+            
           </div>
 
           {/* 상태 필터 드롭다운 */}
@@ -399,153 +422,96 @@ export default function CourseAssignmentsPage({ params }: { params: { id: string
         </div>
 
         {/* 과제 카드 그리드 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredAssignments.map((assignment) => {
-            const statusInfo = getStatusInfo(assignment.status)
-            const overdue = isOverdue(assignment.dueDate, assignment.status)
+        {loadingAssignments && assignments.length === 0 ? (
+          <div className="text-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-4" />
+            <p className="text-gray-600">과제 목록을 불러오는 중...</p>
+          </div>
+        ) : errorAssignments ? (
+          <div className="text-center py-12 text-red-600">
+            <p>{errorAssignments}</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {assignments.map((assignment) => {
+              const statusInfo = getStatusInfo(assignment.status);
+              const overdue = isOverdue(assignment.dueDate, assignment.status);
 
-            return (
-              <Card key={assignment.id} className="hover:shadow-lg transition-shadow duration-200">
-                <CardHeader className="pb-3">
-                  <div className="flex justify-between items-start mb-2">
-                    <CardTitle className="text-lg leading-tight">{assignment.title}</CardTitle>
-                    <Badge variant={statusInfo.variant} className="flex items-center gap-1">
-                      {statusInfo.icon}
-                      {statusInfo.text}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-gray-600 line-clamp-2">{assignment.description}</p>
-                </CardHeader>
-
-                <CardContent className="space-y-4">
-                  {/* 환자 정보 */}
-                  <div className="bg-gray-50 rounded-lg p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h4 className="font-semibold text-sm text-gray-700">환자 정보</h4>
-                      <Badge variant="default" className="text-xs">
-                        {getGenderText(assignment.personaGender)}
+              return (
+                <Card key={assignment.id} className="hover:shadow-lg transition-shadow duration-200">
+                  <CardHeader className="pb-3">
+                    <div className="flex justify-between items-start mb-2">
+                      <CardTitle className="text-lg leading-tight">{assignment.title}</CardTitle>
+                      <Badge variant={statusInfo.variant} className="flex items-center gap-1">
+                        {statusInfo.icon}
+                        {statusInfo.text}
                       </Badge>
                     </div>
-                    <div className="space-y-1">
-                      <p className="text-sm">
-                        <span className="font-medium">{assignment.personaName}</span> ({assignment.personaAge}세)
-                      </p>
-                      <div className="flex items-start gap-1">
-                        <Stethoscope className="w-3 h-3 mt-0.5 text-red-500 flex-shrink-0" />
-                        <p className="text-xs text-gray-600 line-clamp-2">{assignment.personaSymptom}</p>
-                      </div>
-                      <div className="flex items-start gap-1">
-                        <FileText className="w-3 h-3 mt-0.5 text-blue-500 flex-shrink-0" />
-                        <p className="text-xs text-gray-600 line-clamp-2">{assignment.personaHistory}</p>
-                      </div>
+                    
+                  </CardHeader>
+
+                  <CardContent className="space-y-4">
+                    {/* 마감일 */}
+                    <div
+                      className={`flex items-center gap-2 text-sm p-2 rounded text-gray-600 bg-gray-50`}
+                    >
+                      <Clock className="w-4 h-4" />
+                      <span>
+                        마감: {formatDate(assignment.dueDate)}
+                      </span>
                     </div>
-                  </div>
 
-                  {/* 진행률 (진행중인 과제만) */}
-                  {assignment.status === AssignmentStatus.IN_PROGRESS && assignment.currentTurns && (
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">진행률</span>
-                        <span className="text-sm font-medium">
-                          {assignment.currentTurns}/{assignment.maxTurns} 턴
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                          style={{
-                            width: `${getProgressPercentage(assignment.currentTurns, assignment.maxTurns)}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  )}
+                    {/* 액션 버튼 */}
+                    {assignment.status === AssignmentStatus.NOT_STARTED && (
+                      <Link href={`/study/${assignment.id}`}>
+                        <Button className="w-full mt-4">
+                          <Play className="w-4 h-4 mr-2" />
+                          과제 시작
+                          <ChevronRight className="w-4 h-4 ml-2" />
+                        </Button>
+                      </Link>
+                    )}
 
-                  {/* 제출 정보 */}
-                  {assignment.status === AssignmentStatus.SUBMITTED && assignment.submittedAt && (
-                    <div className="flex items-center gap-2 text-sm text-blue-600 bg-blue-50 p-2 rounded">
-                      <ClockIcon className="w-4 h-4" />
-                      <span>제출: {formatDate(assignment.submittedAt)}</span>
-                    </div>
-                  )}
+                    {assignment.status === AssignmentStatus.DRAFT && (
+                      <Link href={`/study/${assignment.id}`}>
+                        <Button className="w-full mt-4">
+                          <Play className="w-4 h-4 mr-2" />
+                          계속하기
+                          <ChevronRight className="w-4 h-4 ml-2" />
+                        </Button>
+                      </Link>
+                    )}
 
-                  {/* 채점 완료 정보 */}
-                  {assignment.status === AssignmentStatus.GRADED && assignment.gradedAt && assignment.score && (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 p-2 rounded">
-                        <CheckCircle className="w-4 h-4" />
-                        <span>채점 완료: {formatDate(assignment.gradedAt)}</span>
-                      </div>
-                      <div className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                        <span className="text-sm font-medium">점수</span>
-                        <span className={`text-lg font-bold ${getScoreColor(assignment.score)}`}>
-                          {assignment.score}점
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 마감일 */}
-                  <div
-                    className={`flex items-center gap-2 text-sm p-2 rounded ${
-                      overdue
-                        ? "text-red-600 bg-red-50"
-                        : assignment.status === AssignmentStatus.GRADED
-                          ? "text-gray-600 bg-gray-50"
-                          : "text-orange-600 bg-orange-50"
-                    }`}
-                  >
-                    <Clock className="w-4 h-4" />
-                    <span>
-                      {overdue ? "마감 지남" : "마감"}: {formatDate(assignment.dueDate)}
-                    </span>
-                  </div>
-
-                  {/* 액션 버튼 */}
-                  {assignment.status === AssignmentStatus.NOT_STARTED && (
-                    <Link href={`/study/${assignment.id}`}>
-                      <Button className="w-full mt-4">
-                        <Play className="w-4 h-4 mr-2" />
-                        과제 시작
-                        <ChevronRight className="w-4 h-4 ml-2" />
+                    {assignment.status === AssignmentStatus.SUBMITTED && (
+                      <Button className="w-full mt-4" disabled variant="outline">
+                        <ClockIcon className="w-4 h-4 mr-2" />
+                        채점 대기중
                       </Button>
-                    </Link>
-                  )}
+                    )}
 
-                  {assignment.status === AssignmentStatus.IN_PROGRESS && (
-                    <Link href={`/study/${assignment.id}`}>
-                      <Button className="w-full mt-4">
-                        <Play className="w-4 h-4 mr-2" />
-                        계속하기
-                        <ChevronRight className="w-4 h-4 ml-2" />
+                    {assignment.status === AssignmentStatus.GRADED && (
+                      <Button className="w-full mt-4" disabled variant="outline">
+                          <Eye className="w-4 h-4 mr-2" />
+                          결과 보기
                       </Button>
-                    </Link>
-                  )}
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
 
-                  {assignment.status === AssignmentStatus.SUBMITTED && (
-                    <Button className="w-full mt-4" disabled variant="outline">
-                      <ClockIcon className="w-4 h-4 mr-2" />
-                      채점 대기중
-                    </Button>
-                  )}
-
-                  {assignment.status === AssignmentStatus.GRADED && (
-                    <Link href={`/results/${assignment.id}`}>
-                      <Button className="w-full mt-4" variant="outline">
-                        <Eye className="w-4 h-4 mr-2" />
-                        결과 보기
-                        <ChevronRight className="w-4 h-4 ml-2" />
-                      </Button>
-                    </Link>
-                  )}
-                </CardContent>
-              </Card>
-            )
-          })}
+        {/* 무한 스크롤 트리거 및 로딩 메시지 */}
+        <div ref={observerTarget} className="py-4 text-center">
+          {isFetchingMore && <Loader2 className="w-6 h-6 animate-spin text-blue-500 mx-auto" />}
+          {!hasNextPage && !loadingAssignments && assignments.length > 0 && (
+            <p className="text-gray-500">더 이상 과제가 없습니다.</p>
+          )}
         </div>
 
         {/* 과제가 없을 때 */}
-        {filteredAssignments.length === 0 && (
+        {assignments.length === 0 && !loadingAssignments && !errorAssignments && (
           <div className="text-center py-12">
             <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">
@@ -556,5 +522,5 @@ export default function CourseAssignmentsPage({ params }: { params: { id: string
         )}
       </div>
     </div>
-  )
+  );
 }

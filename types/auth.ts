@@ -48,9 +48,8 @@ export interface ProfessorRegisterRequest {
 }
 
 export interface LoginRequest {
-  username: string
-  password: string
-  // role: UserRole
+  username: string;
+  password: string;
 }
 
 export interface EmailVerificationRequest {
@@ -79,6 +78,16 @@ export interface EmailVerificationResponse {
   }
 }
 
+export interface VerifyCodeResponse {
+  status: string
+  code: number
+  message: string
+  data?: {
+    verified: boolean
+    message: string
+  }
+}
+
 export interface CsrfToken {
     token: string
     headerName: string
@@ -91,4 +100,23 @@ export interface CsrfTokenResponse {
   message: string
   data?: CsrfToken
   error?: string
+}
+
+export interface Course {
+  id: number;
+  name: string;
+  professorName: string;
+  semester: string;
+}
+
+export interface CoursesResponse {
+  status: string;
+  code: number;
+  message: string;
+  data?: {
+    courses: Course[];
+    totalElements: number;
+    totalPages: number;
+    currentPage: number;
+  };
 }

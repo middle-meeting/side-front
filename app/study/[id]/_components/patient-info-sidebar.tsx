@@ -1,32 +1,43 @@
+
+"use client"
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, Clock, GraduationCap, User, Stethoscope, FileText } from "lucide-react"
-import { type StudentAssignmentDetailResponseDto, GenderType } from "@/types/assignment"
+import {
+  User,
+  Calendar,
+  Clock,
+  GraduationCap,
+  Stethoscope,
+  FileText,
+} from "lucide-react"
+import type { StudentAssignmentDetailResponseDto, GenderType } from "@/types/assignment"
 
 interface PatientInfoSidebarProps {
   assignment: StudentAssignmentDetailResponseDto
   currentTurn: number
+  isSubmitted: boolean
 }
 
-export function PatientInfoSidebar({ assignment, currentTurn }: PatientInfoSidebarProps) {
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("ko-KR", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    })
-  }
+const formatDate = (dateString: string) => {
+  return new Date(dateString).toLocaleDateString("ko-KR", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+}
 
-  const getGenderText = (gender: GenderType) => {
-    return gender === GenderType.MALE ? "남성" : "여성"
-  }
+const getGenderText = (gender: GenderType) => {
+  return gender === "MALE" ? "남성" : "여성"
+}
 
-  const getGenderColor = (gender: GenderType) => {
-    return gender === GenderType.MALE ? "bg-blue-100 text-blue-800" : "bg-pink-100 text-pink-800"
-  }
-
+export function PatientInfoSidebar({
+  assignment,
+  currentTurn,
+  isSubmitted,
+}: PatientInfoSidebarProps) {
   return (
     <div className="w-80 bg-gray-50 border-l border-gray-200 p-4 space-y-4 overflow-y-auto">
       {/* 과제 정보 */}
@@ -58,7 +69,9 @@ export function PatientInfoSidebar({ assignment, currentTurn }: PatientInfoSideb
           </div>
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-gray-500" />
-            <span className="text-sm text-gray-600">마감: {formatDate(assignment.dueDate)}</span>
+            <span className="text-sm text-gray-600">
+              마감: {formatDate(assignment.dueDate)}
+            </span>
           </div>
         </CardContent>
       </Card>
@@ -77,7 +90,13 @@ export function PatientInfoSidebar({ assignment, currentTurn }: PatientInfoSideb
               <h3 className="font-semibold text-lg">{assignment.personaName}</h3>
               <p className="text-sm text-gray-600">{assignment.personaAge}세</p>
             </div>
-            <Badge className={getGenderColor(assignment.personaGender)}>
+            <Badge
+              className={
+                assignment.personaGender === "MALE"
+                  ? "bg-blue-100 text-blue-800"
+                  : "bg-pink-100 text-pink-800"
+              }
+            >
               {getGenderText(assignment.personaGender)}
             </Badge>
           </div>
@@ -87,7 +106,9 @@ export function PatientInfoSidebar({ assignment, currentTurn }: PatientInfoSideb
               <Stethoscope className="w-4 h-4" />
               주요 증상
             </h3>
-            <p className="text-sm mt-1 p-2 bg-red-50 rounded border-l-4 border-red-200">{assignment.personaSymptom}</p>
+            <p className="text-sm mt-1 p-2 bg-red-50 rounded border-l-4 border-red-200">
+              {assignment.personaSymptom}
+            </p>
           </div>
 
           <div>
@@ -114,21 +135,40 @@ export function PatientInfoSidebar({ assignment, currentTurn }: PatientInfoSideb
           <div className="space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600">대화 턴</span>
-              <Badge variant={currentTurn >= assignment.maxTurns ? "destructive" : "default"}>
+              <Badge
+                variant={
+                  currentTurn >= assignment.maxTurns ? "destructive" : "default"
+                }
+              >
                 {currentTurn} / {assignment.maxTurns}
               </Badge>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div
                 className={`h-2 rounded-full transition-all duration-300 ${
-                  currentTurn >= assignment.maxTurns ? "bg-red-500" : "bg-blue-500"
+                  isSubmitted
+                    ? "bg-green-500"
+                    : currentTurn >= assignment.maxTurns
+                      ? "bg-red-500"
+                      : "bg-blue-500"
                 }`}
-                style={{ width: `${Math.min((currentTurn / assignment.maxTurns) * 100, 100)}%` }}
+                style={{
+                  width: `${Math.min(
+                    (currentTurn / assignment.maxTurns) * 100,
+                    100
+                  )}%`,
+                }}
               />
             </div>
-            {currentTurn >= assignment.maxTurns && (
-              <p className="text-xs text-red-600 mt-2">최대 대화 턴에 도달했습니다.</p>
-            )}
+            {isSubmitted ? (
+              <p className="text-xs text-green-600 mt-2">
+                과제가 제출되었습니다.
+              </p>
+            ) : currentTurn >= assignment.maxTurns ? (
+              <p className="text-xs text-red-600 mt-2">
+                최대 대화 턴에 도달했습니다.
+              </p>
+            ) : null}
           </div>
         </CardContent>
       </Card>
