@@ -22,8 +22,8 @@ jobs:
 
     - name: Generate .env file
       run: |
-        echo "NEXT_PUBLIC_API_URL=${{ secrets.FRONT_ENV_NEXT_PUBLIC_API_URL }}" >> .env
-        echo "NEXT_PUBLIC_CLIENT_ID=${{ secrets.FRONT_ENV_NEXT_PUBLIC_CLIENT_ID }}" >> .env
+        echo "NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}" >> .env
+        echo "API_URL=${{ secrets.API_URL }}" >> .env
 
     - name: Build Docker image
       run: docker build -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} .
@@ -36,7 +36,7 @@ jobs:
       with:
         host: ${{ secrets.VM_HOST }}
         username: ${{ secrets.VM_USER }}
-        key: ${{ secrets.VM_SSH_KEY }}
+        key: ${{ secrets.VM_SSH_PRIVATE_KEY }}
         passphrase: ${{ secrets.VM_SSH_PASSPHRASE }}
         script: |
           docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GIT_TOKEN }}
@@ -45,6 +45,6 @@ jobs:
           docker rm ${{ env.IMAGE_NAME }} || true
           docker run -d --name ${{ env.IMAGE_NAME }} \
             -p 3000:3000 \
-            -e NEXT_PUBLIC_API_URL=${{ secrets.FRONT_ENV_NEXT_PUBLIC_API_URL }} \
-            -e NEXT_PUBLIC_CLIENT_ID=${{ secrets.FRONT_ENV_NEXT_PUBLIC_CLIENT_ID }} \
+            -e NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }} \
+            -e API_URL=${{ secrets.API_URL }} \
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
