@@ -19,8 +19,14 @@ export interface StudentAssignmentDetailResponseDto {
 }
 
 export interface ChatMessage {
-  id: string
-  role: "user" | "assistant"
-  content: string
-  timestamp: Date
+  id: number
+  turnNumber: number
+  speaker: "STUDENT" | "AI"
+  message: string
+  timestamp: string
+}
+
+export interface ChatResponseData {
+  studentMessage: ChatMessage;
+  aiMessage: ChatMessage;
 }

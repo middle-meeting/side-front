@@ -1,6 +1,6 @@
 "use client"
 
-import { Bot, User } from "lucide-react"
+import { Bot, User, Loader2 } from "lucide-react"
 import type { ChatMessage as ChatMessageType } from "@/types/assignment"
 
 interface ChatMessageProps {
@@ -9,7 +9,8 @@ interface ChatMessageProps {
 }
 
 export function ChatMessage({ message, personaName }: ChatMessageProps) {
-  const isUser = message.role === "user"
+  const isUser = message.speaker === "STUDENT"
+  const isLoadingAI = message.speaker === "AI" && message.message === ""
 
   return (
     <div
@@ -35,9 +36,16 @@ export function ChatMessage({ message, personaName }: ChatMessageProps) {
             })}
           </span>
         </div>
-        <div className="text-sm text-gray-800 whitespace-pre-wrap">
-          {message.content}
-        </div>
+        {isLoadingAI ? (
+          <div className="text-sm text-gray-600 flex items-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span>입력 중...</span>
+          </div>
+        ) : (
+          <div className="text-sm text-gray-800 whitespace-pre-wrap">
+            {message.message}
+          </div>
+        )}
       </div>
     </div>
   )
