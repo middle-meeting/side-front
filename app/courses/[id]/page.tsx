@@ -463,7 +463,7 @@ export default function CourseAssignmentsPage() {
 
                     {/* 액션 버튼 */}
                     {assignment.status === AssignmentStatus.NOT_STARTED && (
-                      <Link href={`/study/${assignment.id}`}>
+                      <Link href={`/courses/${courseDetail.id}/study/${assignment.id}`}>
                         <Button className="w-full mt-4">
                           <Play className="w-4 h-4 mr-2" />
                           과제 시작
@@ -473,7 +473,7 @@ export default function CourseAssignmentsPage() {
                     )}
 
                     {assignment.status === AssignmentStatus.DRAFT && (
-                      <Link href={`/study/${assignment.id}`}>
+                      <Link href={`/courses/${courseDetail.id}/study/${assignment.id}`}>
                         <Button className="w-full mt-4">
                           <Play className="w-4 h-4 mr-2" />
                           계속하기

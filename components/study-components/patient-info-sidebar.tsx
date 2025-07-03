@@ -1,4 +1,3 @@
-
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,7 +13,7 @@ import {
 import type { StudentAssignmentDetailResponseDto, GenderType } from "@/types/assignment"
 
 interface PatientInfoSidebarProps {
-  assignment: StudentAssignmentDetailResponseDto
+  assignment: StudentAssignmentDetailResponseDto | null
   currentTurn: number
   isSubmitted: boolean
 }
@@ -38,6 +37,10 @@ export function PatientInfoSidebar({
   currentTurn,
   isSubmitted,
 }: PatientInfoSidebarProps) {
+  if (!assignment) {
+    return null
+  }
+
   return (
     <div className="w-80 bg-gray-50 border-l border-gray-200 p-4 space-y-4 overflow-y-auto">
       {/* 과제 정보 */}
