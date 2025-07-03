@@ -44,6 +44,7 @@ jobs:
           docker stop ${{ env.IMAGE_NAME }} || true
           docker rm ${{ env.IMAGE_NAME }} || true
           docker run -d --name ${{ env.IMAGE_NAME }} \
+            --network side-network \
             -p 3000:3000 \
             -e NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }} \
             -e API_URL=${{ secrets.API_URL }} \
