@@ -32,7 +32,7 @@ jobs:
       run: docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
 
     - name: Deploy to Frontend VM via SSH
-      uses: appleboy/ssh-action@v1.0.3
+      uses: appleboy/ssh-action@master
       with:
         host: ${{ secrets.VM_HOST }}
         username: ${{ secrets.VM_USER }}
