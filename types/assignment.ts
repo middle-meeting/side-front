@@ -21,7 +21,7 @@ export interface StudentAssignmentDetailResponseDto {
 export interface ChatMessage {
   id: number
   turnNumber: number
-  speaker: "STUDENT" | "AI"
+  speaker: "STUDENT" | "AI" | "SYSTEM"
   message: string
   timestamp: string
 }
@@ -29,4 +29,19 @@ export interface ChatMessage {
 export interface ChatResponseData {
   studentMessage: ChatMessage;
   aiMessage: ChatMessage;
+}
+
+export interface Prescription {
+  id: string // 프론트엔드에서 임시로 사용할 ID
+  drugName: string
+  dosage: string
+  frequency: string
+  duration: string
+}
+
+export interface DiagnosisSubmission {
+  primaryDiagnosis: string
+  subDiagnosis: string
+  prescriptions: Prescription[]
+  finalJudgment: string
 }

@@ -19,12 +19,9 @@ interface DiagnosisFormModalProps {
 
 const initialFormState: DiagnosisSubmission = {
   primaryDiagnosis: "",
-  secondaryDiagnosis: "",
-  prescriptions: [{ id: "1", medication: "", dosage: "", frequency: "", duration: "" }],
-  additionalTests: "",
-  patientEducation: "",
-  followUpPlan: "",
-  clinicalReasoning: "",
+  subDiagnosis: "",
+  prescriptions: [{ id: "1", drugName: "", dosage: "", frequency: "", duration: "" }],
+  finalJudgment: "",
 }
 
 export function DiagnosisFormModal({
@@ -37,7 +34,7 @@ export function DiagnosisFormModal({
   const addPrescription = () => {
     const newPrescription: Prescription = {
       id: Date.now().toString(),
-      medication: "",
+      drugName: "",
       dosage: "",
       frequency: "",
       duration: "",
@@ -78,8 +75,8 @@ export function DiagnosisFormModal({
   const isFormValid = () => {
     return (
       diagnosisForm.primaryDiagnosis.trim() !== "" &&
-      diagnosisForm.clinicalReasoning.trim() !== "" &&
-      diagnosisForm.prescriptions.some((p) => p.medication.trim() !== "")
+      diagnosisForm.finalJudgment.trim() !== "" &&
+      diagnosisForm.prescriptions.some((p) => p.drugName.trim() !== "")
     )
   }
 
@@ -123,14 +120,14 @@ export function DiagnosisFormModal({
                 />
               </div>
               <div>
-                <Label htmlFor="secondary-diagnosis">부 진단</Label>
+                <Label htmlFor="sub-diagnosis">부 진단</Label>
                 <Input
-                  id="secondary-diagnosis"
-                  value={diagnosisForm.secondaryDiagnosis}
+                  id="sub-diagnosis"
+                  value={diagnosisForm.subDiagnosis}
                   onChange={(e) =>
                     setDiagnosisForm((prev) => ({
                       ...prev,
-                      secondaryDiagnosis: e.target.value,
+                      subDiagnosis: e.target.value,
                     }))
                   }
                   placeholder="예: 고혈압 (I10)"
@@ -175,14 +172,14 @@ export function DiagnosisFormModal({
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                   <div>
-                    <Label htmlFor={`medication-${prescription.id}`}>약물명</Label>
+                    <Label htmlFor={`drugName-${prescription.id}`}>약물명</Label>
                     <Input
-                      id={`medication-${prescription.id}`}
-                      value={prescription.medication}
+                      id={`drugName-${prescription.id}`}
+                      value={prescription.drugName}
                       onChange={(e) =>
                         updatePrescription(
                           prescription.id,
-                          "medication",
+                          "drugName",
                           e.target.value
                         )
                       }
@@ -243,72 +240,18 @@ export function DiagnosisFormModal({
             ))}
           </div>
 
-          {/* 추가 검사 */}
-          <div>
-            <Label htmlFor="additional-tests">추가 검사 계획</Label>
-            <Textarea
-              id="additional-tests"
-              value={diagnosisForm.additionalTests}
-              onChange={(e) =>
-                setDiagnosisForm((prev) => ({
-                  ...prev,
-                  additionalTests: e.target.value,
-                }))
-              }
-              placeholder="필요한 추가 검사가 있다면 작성해주세요. (예: 복부 CT, 혈액검사 등)"
-              className="mt-1"
-              rows={3}
-            />
-          </div>
-
-          {/* 환자 교육 */}
-          <div>
-            <Label htmlFor="patient-education">환자 교육 및 생활 지도</Label>
-            <Textarea
-              id="patient-education"
-              value={diagnosisForm.patientEducation}
-              onChange={(e) =>
-                setDiagnosisForm((prev) => ({
-                  ...prev,
-                  patientEducation: e.target.value,
-                }))
-              }
-              placeholder="환자에게 제공할 교육 내용과 생활 지도사항을 작성해주세요."
-              className="mt-1"
-              rows={3}
-            />
-          </div>
-
-          {/* 추후 관리 계획 */}
-          <div>
-            <Label htmlFor="follow-up-plan">추후 관리 계획</Label>
-            <Textarea
-              id="follow-up-plan"
-              value={diagnosisForm.followUpPlan}
-              onChange={(e) =>
-                setDiagnosisForm((prev) => ({
-                  ...prev,
-                  followUpPlan: e.target.value,
-                }))
-              }
-              placeholder="재진 일정, 경과 관찰 계획 등을 작성해주세요."
-              className="mt-1"
-              rows={3}
-            />
-          </div>
-
           {/* 임상적 근거 */}
           <div>
-            <Label htmlFor="clinical-reasoning">
+            <Label htmlFor="final-judgment">
               임상적 근거 및 판단 과정 *
             </Label>
             <Textarea
-              id="clinical-reasoning"
-              value={diagnosisForm.clinicalReasoning}
+              id="final-judgment"
+              value={diagnosisForm.finalJudgment}
               onChange={(e) =>
                 setDiagnosisForm((prev) => ({
                   ...prev,
-                  clinicalReasoning: e.target.value,
+                  finalJudgment: e.target.value,
                 }))
               }
               placeholder="진단에 이른 임상적 근거와 판단 과정을 상세히 설명해주세요."

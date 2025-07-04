@@ -45,9 +45,26 @@ export default function StudyPage() {
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [showSubmitForm, setShowSubmitForm] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [csrfToken, setCsrfToken] = useState<string | null>(null) // CSRF 토큰 상태 추가
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    const fetchCsrfToken = async () => {
+      try {
+        const response = await fetch('/api/auth/csrf', { credentials: "include" });
+        const data = await response.json();
+        if (response.ok && data.data && data.data.token) {
+          setCsrfToken(data.data.token);
+        } else {
+          console.error("Failed to fetch CSRF token:", data.message);
+        }
+      } catch (error) {
+        console.error("Error fetching CSRF token:", error);
+      }
+    };
+
+    fetchCsrfToken();
+
     const fetchAssignmentAndChat = async () => {
       if (!courseId || !assignmentId) {
         setError("Course ID or Assignment ID is missing.")
@@ -192,22 +209,55 @@ export default function StudyPage() {
   }
 
   const handleSubmitAssignment = async (submission: DiagnosisSubmission) => {
+    if (!assignmentId) return
+
+    // `id` 필드는 백엔드에 보내지 않음
+    const submissionData = {
+      ...submission,
+      prescriptions: submission.prescriptions.map(({ id, ...rest }) => rest),
+    }
+
     try {
-      console.log("제출된 진찰결과:", submission)
-
-      setIsSubmitted(true)
-      setShowSubmitForm(false)
-
-      const submitMessage: ChatMessageType = {
-        id: (Date.now() + 2).toString(),
-        role: "assistant",
-        content:
-          "과제와 진찰결과가 성공적으로 제출되었습니다. 교수님의 채점을 기다려주세요.",
-        timestamp: new Date(),
+      if (!csrfToken) {
+        throw new Error("CSRF 토큰을 가져오지 못했습니다.");
       }
-      setMessages((prev) => [...prev, submitMessage])
+
+      const response = await fetch(
+        `/api/student/assignments/${assignmentId}/submission`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "X-XSRF-TOKEN": csrfToken, // CSRF 토큰 추가
+          },
+          body: JSON.stringify(submissionData),
+          credentials: "include",
+        }
+      )
+
+      const result = await response.json()
+
+      if (response.ok && result.status === "OK") {
+        console.log("제출 성공:", result.data)
+        setIsSubmitted(true)
+        setShowSubmitForm(false)
+
+        // 성공 메시지를 채팅에 추가
+        const successMessage: ChatMessageType = {
+          id: Date.now(),
+          turnNumber: currentTurn + 1, // 턴 번호는 적절히 조정
+          speaker: "SYSTEM", // 시스템 메시지 타입이 있다면 사용
+          message: "과제가 성공적으로 제출되었습니다. 교수님의 채점을 기다려주세요.",
+          timestamp: new Date().toISOString(),
+        }
+        setMessages((prev) => [...prev, successMessage])
+      } else {
+        throw new Error(result.message || "과제 제출에 실패했습니다.")
+      }
     } catch (error) {
       console.error("Submit error:", error)
+      // 사용자에게 에러 알림 (예: toast 메시지)
+      alert(error instanceof Error ? error.message : "알 수 없는 오류가 발생했습니다.")
     }
   }
 
