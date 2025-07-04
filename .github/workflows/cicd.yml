@@ -3,10 +3,12 @@ name: Build and Deploy Frontend to GCP VM
 on:
   push:
     branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
 
 env:
-  IMAGE_NAME: frontend
-  IMAGE_TAG: latest
+  IMAGE_NAME: ${{ env.IMAGE_NAME }}
+  IMAGE_TAG: ${{ env.IMAGE_TAG }}
   REGISTRY: ghcr.io/${{ github.repository_owner }}
 
 jobs:
