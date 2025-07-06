@@ -124,7 +124,7 @@ export default function CourseAssignmentsPage() {
   const params = useParams();
   const courseId = params.id as string;
   const router = useRouter();
-  const { user, isLoading: isLoadingAuth } = useAuth();
+  const { user, logout,isLoading: isLoadingAuth } = useAuth();
 
   const [courseDetail, setCourseDetail] = useState<CourseDetail | null>(null);
   const [loadingCourseDetail, setLoadingCourseDetail] = useState(true);
@@ -343,14 +343,23 @@ export default function CourseAssignmentsPage() {
               <h1 className="text-xl font-semibold text-gray-900">의료교육 플랫폼</h1>
             </div>
             <div className="flex items-center space-x-4">
+              <span className="text-sm text-gray-600">
+                {user.name}님 ({user.role === "STUDENT" ? "학생" : "교수"})
+              </span>
               <Link href="/">
                 <Button variant="ghost" className="text-blue-600">
                   강의 목록
                 </Button>
               </Link>
-              <Link href="/">
+              {/* <Link href="/study/1">
                 <Button variant="ghost">환자 시뮬레이션</Button>
-              </Link>
+              </Link> */}
+              <Button
+                variant="ghost"
+                onClick={logout}
+              >
+                로그아웃
+              </Button>
             </div>
           </div>
         </div>

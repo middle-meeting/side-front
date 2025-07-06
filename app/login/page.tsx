@@ -185,31 +185,6 @@ export default function LoginPage() {
               </div>
             </form>
 
-            {/* 데모 계정 */}
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <p className="text-sm text-gray-600 text-center mb-3">데모 계정으로 체험하기</p>
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDemoLogin(UserRole.STUDENT)}
-                  className="text-xs"
-                >
-                  학생 계정
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDemoLogin(UserRole.PROFESSOR)}
-                  className="text-xs"
-                >
-                  교수 계정
-                </Button>
-              </div>
-            </div>
-
             {/* 회원가입 링크 */}
             <div className="mt-6 text-center">
               <p className="text-sm text-gray-600">
@@ -221,11 +196,6 @@ export default function LoginPage() {
             </div>
           </CardContent>
         </Card>
-
-        {/* 도움말 */}
-        <div className="mt-6 text-center">
-          <p className="text-xs text-gray-500">데모 계정 비밀번호: password123</p>
-        </div>
       </div>
     </div>
   )

@@ -188,7 +188,7 @@ export default function RegisterPage() {
                         <Select onValueChange={(value) => field.onChange(Number(value))} defaultValue={String(field.value)}>
                           <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            {[1, 2, 3, 4, 5, 6].map(g => <SelectItem key={g} value={String(g)}>{g}학년</SelectItem>)}
+                            {[1, 2, 3, 4].map(g => <SelectItem key={g} value={String(g)}>{g}학년</SelectItem>)}
                           </SelectContent>
                         </Select>
                       </div>

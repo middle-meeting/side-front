@@ -34,8 +34,7 @@ export default function StudyPage() {
   const courseId = params.id
   const assignmentId = params.assignmentId
 
-  const [assignment, setAssignment] =
-    useState<StudentAssignmentDetailResponseDto | null>(null)
+  const [assignment, setAssignment] = useState<StudentAssignmentDetailResponseDto | null>(null)
   const [messages, setMessages] = useState<ChatMessageType[]>([])
   const [loadingChat, setLoadingChat] = useState(true)
   const [chatError, setChatError] = useState<string | null>(null)
@@ -133,7 +132,7 @@ export default function StudyPage() {
     if (
       !input.trim() ||
       isLoading ||
-      currentTurn >= assignment.maxTurns ||
+      (assignment && currentTurn >= assignment.maxTurns) ||
       isSubmitted
     )
       return
