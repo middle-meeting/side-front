@@ -5,14 +5,14 @@
   "scripts": {
     "build": "next build",
     "dev": "next dev",
-    "lint": "gts lint",
+    "lint": "next lint",
     "start": "next start",
-    "clean": "gts clean",
+    "clean": "rm -rf .next",
     "compile": "tsc",
-    "fix": "gts fix",
-    "prepare": "npm.cmd run compile",
-    "pretest": "npm.cmd run compile",
-    "posttest": "npm.cmd run lint"
+    "fix": "next lint --fix",
+    "prepare": "npm run compile",
+    "pretest": "npm run compile",
+    "posttest": "npm run lint"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
