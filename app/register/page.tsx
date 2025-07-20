@@ -197,7 +197,7 @@ export default function RegisterPage() {
                   <div>
                     <Label htmlFor="studentId">학번</Label>
                     <Input id="studentId" {...register("studentId")} placeholder="학번" className="mt-1" />
-                    {errors.studentId && <p className="text-xs text-red-500 mt-1">{errors.studentId.message}</p>}
+                    {"studentId" in errors && errors.studentId && <p className="text-xs text-red-500 mt-1">{errors.studentId.message}</p>}
                   </div>
                 </div>
               )}

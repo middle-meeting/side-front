@@ -64,6 +64,7 @@ export interface PasswordResetRequest {
 
 export interface AuthResponse {
   status: string
+  success?: boolean
   code: number
   message: string
   data?: User

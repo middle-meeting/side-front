@@ -20,10 +20,11 @@ export async function POST(request: NextRequest) {
     if (!user) {
       return Response.json(
         {
+          status: "error",
+          code: 404,
           success: false,
           message: "입력하신 정보와 일치하는 계정을 찾을 수 없습니다.",
-        } as AuthResponse,
-        { status: 404 },
+        } as AuthResponse
       )
     }
 
@@ -39,10 +40,11 @@ export async function POST(request: NextRequest) {
     console.error("Password reset error:", error)
     return Response.json(
       {
+        status: "error",
+        code: 500,
         success: false,
         message: "서버 오류가 발생했습니다.",
-      } as AuthResponse,
-      { status: 500 },
+      } as AuthResponse
     )
   }
 }

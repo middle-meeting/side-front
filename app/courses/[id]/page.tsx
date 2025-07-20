@@ -444,7 +444,7 @@ export default function CourseAssignmentsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {assignments.map((assignment) => {
               const statusInfo = getStatusInfo(assignment.status);
-              const overdue = isOverdue(assignment.dueDate, assignment.status);
+              const overdue = isOverdue(assignment.dueDate);
 
               return (
                 <Card key={assignment.id} className="hover:shadow-lg transition-shadow duration-200">
