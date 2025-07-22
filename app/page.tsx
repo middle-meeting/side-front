@@ -10,6 +10,7 @@ import { BookOpen, User, Calendar, ChevronRight, GraduationCap, Loader2 } from "
 import Link from "next/link"
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
+import { UserRole } from "@/types/auth"
 
 // 타입 정의
 interface Course {
@@ -62,11 +63,13 @@ export default function HomePage() {
     setErrorCourses(null)
 
     try {
-      const response = await fetch(`/api/student/courses?semester=${semester}&page=${page}`, {
+      const response = user && user.role === "STUDENT" ? await fetch(`/api/student/courses?semester=${semester}&page=${page}`, {
+        credentials: "include",
+      }) : await fetch(`/api/professor/courses?semester=${semester}&page=${page}`, {
         credentials: "include",
       })
       const data: ApiResponse<CourseResponseData> = await response.json()
-
+      
       if (response.ok && data.data && data.data.content) {
         if (append) {
           setCourses((prevCourses) => [...prevCourses, ...data.data!.content])
@@ -277,7 +280,7 @@ export default function HomePage() {
                   </div>
 
                   {/* 강의 입장 버튼 */}
-                  <Link href={`/courses/${course.id}`}>
+                  <Link href={`/courses/${user.role === "STUDENT" ? "" : "professor/"}${course.id}`}>
                     <Button className="w-full mt-4" variant="outline">
                       <BookOpen className="w-4 h-4 mr-2" />
                       강의 입장
