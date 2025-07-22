@@ -24,7 +24,7 @@ const studentSchema = baseSchema.extend({
 
 const professorSchema = baseSchema.extend({
   role: z.literal(UserRole.PROFESSOR),
-  // employeeId: z.string().min(1, { message: "직번을 입력해주세요." }),
+  employeeId: z.string().min(1, { message: "직번을 입력해주세요." }),
 })
 
 export const registerSchema = z
