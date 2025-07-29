@@ -102,3 +102,48 @@ export interface StudentGrade {
   overallFeedback: string
   gradedAt: string
 }
+
+export interface ProfessorAssignmentDetailResponseDto {
+  id: number
+  title: string
+  personaName: string
+  personaAge: number
+  personaGender: GenderType
+  personaSymptom: string
+  personaHistory: string
+  personaPersonality: string
+  personaDisease: string
+  objective: string
+  maxTurns: number
+  dueDate: string
+  courseName: string
+  semester: string
+  professorName: string
+}
+
+export interface Prescription {
+  id: string // 프론트엔드에서 임시로 사용할 ID
+  drugName: string
+  dosage: string
+  frequency: string
+  duration: string
+}
+
+export interface ProfessorDiagnosisSubmissionResponseDto {
+  id: number
+  name: string
+  studentId: string
+  primaryDiagnosis: string
+  subDiagnosis: string
+  prescriptions: Prescription[]
+  finalJudgement: string
+  submittedAt: string
+  status: string
+}
+
+export interface ProfessorEvaluationResponseDto {
+  id: number
+  score: number
+  feedback: string
+  accountId: number
+}
