@@ -311,11 +311,12 @@ export default function StudentSubmissionDetailPage() {
   }
 
   // 평균 점수 계산
-  const averageMessageScore =
+  const averageMessageScore = chats.filter((msg) => msg.speaker === "STUDENT" && msg.score != null).length ?
     chats
-      .filter((msg) => msg.speaker === "STUDENT" && msg.score)
+      .filter((msg) => msg.speaker === "STUDENT" && msg.score != null)
       .reduce((sum, msg) => sum + (msg.score || 0), 0) /
-    chats.filter((msg) => msg.speaker === "STUDENT" && msg.score).length
+    chats.filter((msg) => msg.speaker === "STUDENT" && msg.score != null).length
+    : 0
 
   useEffect(() => {
     if (!isLoading && (!user || user.role !== "PROFESSOR")) {
