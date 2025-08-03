@@ -1,6 +1,7 @@
+
 "use client"
 
-import type React from "react"
+
 import Link from "next/link"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -73,105 +74,37 @@ function Badge({
   return <div className={`${baseClasses} ${variantClasses} ${className}`}>{children}</div>
 }
 
-// 샘플 채점 결과 데이터
-const sampleGradingResult: GradingResult = {
-  assignmentId: 3,
-  assignmentTitle: "고혈압 환자 추적관찰",
-  studentName: "김의대",
-  courseName: "내과학 실습",
-  professorName: "이진료",
-  submittedAt: "2024-01-08T14:30:00",
-  gradedAt: "2024-01-09T10:15:00",
-  totalScore: 85,
-  maxScore: 100,
-  overallFeedback:
-    "전반적으로 환자와의 소통이 좋았고, 고혈압 관리에 대한 기본적인 지식을 잘 활용했습니다. 다만, 약물 순응도 개선을 위한 구체적인 방안 제시가 부족했고, 생활습관 교정에 대한 더 자세한 설명이 필요했습니다. 환자의 심리적 상태에 대한 배려도 좋았습니다.",
-  patientInfo: {
-    name: "최고혈",
-    age: 62,
-    gender: GenderType.FEMALE,
-    symptom: "두통, 어지러움, 목 뒤 뻣뻣함",
-    history: "고혈압 진단 5년, 약물 복용 불규칙",
-  },
-  messages: [
-    {
-      id: "1",
-      role: "assistant",
-      content: "안녕하세요, 저는 최고혈입니다. 요즘 머리가 자주 아프고 어지러워서 왔어요.",
-      timestamp: new Date("2024-01-08T14:30:00"),
-    },
-    {
-      id: "2",
-      role: "user",
-      content: "안녕하세요. 언제부터 이런 증상이 있으셨나요?",
-      timestamp: new Date("2024-01-08T14:31:00"),
-      comment: "좋은 시작입니다. 증상의 시작 시점을 파악하는 것은 중요한 질문입니다.",
-      score: 9,
-    },
-    {
-      id: "3",
-      role: "assistant",
-      content: "한 일주일 정도 된 것 같아요. 특히 아침에 일어날 때 머리가 많이 아파요.",
-      timestamp: new Date("2024-01-08T14:31:30"),
-    },
-    {
-      id: "4",
-      role: "user",
-      content: "현재 복용하고 계신 약이 있나요? 고혈압 약은 잘 드시고 계신가요?",
-      timestamp: new Date("2024-01-08T14:32:00"),
-      comment: "환자의 기존 병력을 고려한 적절한 질문입니다. 약물 순응도 확인이 중요합니다.",
-      score: 10,
-    },
-    {
-      id: "5",
-      role: "assistant",
-      content: "고혈압 약을 처방받긴 했는데... 솔직히 말하면 자주 깜빡하고 안 먹을 때가 많아요. 괜찮을 줄 알았거든요.",
-      timestamp: new Date("2024-01-08T14:32:30"),
-    },
-    {
-      id: "6",
-      role: "user",
-      content:
-        "고혈압 약을 규칙적으로 복용하지 않으시면 혈압이 조절되지 않아서 지금 같은 증상이 나타날 수 있어요. 혈압을 한번 재어보겠습니다.",
-      timestamp: new Date("2024-01-08T14:33:00"),
-      comment: "약물 순응도와 증상의 연관성을 잘 설명했습니다. 혈압 측정은 적절한 다음 단계입니다.",
-      score: 8,
-    },
-    {
-      id: "7",
-      role: "assistant",
-      content: "네, 알겠습니다. 그런데 약을 매일 먹어야 하나요? 증상이 없을 때도요?",
-      timestamp: new Date("2024-01-08T14:33:30"),
-    },
-    {
-      id: "8",
-      role: "user",
-      content:
-        "네, 맞습니다. 고혈압은 '침묵의 살인자'라고 불릴 정도로 증상이 없어도 지속적으로 혈관에 손상을 줍니다. 매일 규칙적으로 복용하셔야 합니다.",
-      timestamp: new Date("2024-01-08T14:34:00"),
-      comment: "고혈압의 특성을 잘 설명했습니다. 환자 교육이 적절합니다.",
-      score: 9,
-    },
-    {
-      id: "9",
-      role: "assistant",
-      content: "아, 그렇구나요. 그럼 앞으로는 꼭 챙겨 먹을게요. 다른 주의사항도 있나요?",
-      timestamp: new Date("2024-01-08T14:34:30"),
-    },
-    {
-      id: "10",
-      role: "user",
-      content:
-        "식단 관리도 중요합니다. 짠 음식을 줄이시고, 규칙적인 운동도 도움이 됩니다. 다음 진료 때까지 혈압을 기록해 보시는 것도 좋겠어요.",
-      timestamp: new Date("2024-01-08T14:35:00"),
-      comment: "생활습관 교정에 대한 조언이 좋습니다. 다만 더 구체적인 방법을 제시했다면 더 좋았을 것입니다.",
-      score: 7,
-    },
-  ],
-}
 
+import React, { useEffect, useState } from "react"
+
+
+// URL 구조를 /results/[courseId]/[assignmentId]로 변경
 export default function ResultsPage({ params }: { params: { id: string } }) {
-  const formatDate = (dateString: string) => {
+  const assignmentId = params.id
+  const courseId = params.id
+
+  const [assignmentDetail, setAssignmentDetail] = useState<any>(null)
+  const [summary, setSummary] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setLoading(true)
+    Promise.all([
+      fetch(`/api/student/courses/${courseId}/assignments/${assignmentId}`, { credentials: "include" }).then(res => res.json()),
+      fetch(`/api/student/assignments/${assignmentId}/my-summary`, { credentials: "include" }).then(res => res.json()),
+    ])
+      .then(([detailRes, summaryRes]) => {
+        if (detailRes.code !== 200) throw new Error(detailRes.message)
+        if (summaryRes.code !== 200) throw new Error(summaryRes.message)
+        setAssignmentDetail(detailRes.data)
+        setSummary(summaryRes.data)
+      })
+      .catch(e => setError(e.message))
+      .finally(() => setLoading(false))
+  }, [assignmentId, courseId])
+
+  function formatDate(dateString: string) {
     return new Date(dateString).toLocaleDateString("ko-KR", {
       year: "numeric",
       month: "long",
@@ -181,18 +114,18 @@ export default function ResultsPage({ params }: { params: { id: string } }) {
     })
   }
 
-  const getGenderText = (gender: GenderType) => {
-    return gender === GenderType.MALE ? "남성" : "여성"
+  function getGenderText(gender: string) {
+    return gender === "MALE" ? "남성" : "여성"
   }
 
-  const getScoreColor = (score: number) => {
+  function getScoreColor(score: number) {
     if (score >= 90) return "text-green-600"
     if (score >= 80) return "text-blue-600"
     if (score >= 70) return "text-yellow-600"
     return "text-red-600"
   }
 
-  const getScoreGrade = (score: number) => {
+  function getScoreGrade(score: number) {
     if (score >= 90) return "A"
     if (score >= 80) return "B"
     if (score >= 70) return "C"
@@ -200,11 +133,14 @@ export default function ResultsPage({ params }: { params: { id: string } }) {
     return "F"
   }
 
-  const averageMessageScore =
-    sampleGradingResult.messages
-      .filter((msg) => msg.role === "user" && msg.score)
-      .reduce((sum, msg) => sum + (msg.score || 0), 0) /
-    sampleGradingResult.messages.filter((msg) => msg.role === "user" && msg.score).length
+  // 평균 점수 계산 (chatFeedbacks에 score가 있을 때)
+  const avgScore = summary && summary.chatFeedbacks && summary.chatFeedbacks.length
+    ? summary.chatFeedbacks.reduce((sum: number, f: any) => sum + (f.score || 0), 0) / summary.chatFeedbacks.length
+    : 0
+
+  if (loading) return <div className="p-8 text-center">로딩 중...</div>
+  if (error) return <div className="p-8 text-center text-red-500">{error}</div>
+  if (!assignmentDetail || !summary) return null
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -234,7 +170,7 @@ export default function ResultsPage({ params }: { params: { id: string } }) {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">채점 결과</h1>
-            <p className="text-gray-600">{sampleGradingResult.assignmentTitle}</p>
+            <p className="text-gray-600">{assignmentDetail.title}</p>
           </div>
           <Link href="/courses/1">
             <Button variant="outline">
@@ -262,52 +198,28 @@ export default function ResultsPage({ params }: { params: { id: string } }) {
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900">총점</h3>
                       <p className="text-sm text-gray-600">
-                        제출: {formatDate(sampleGradingResult.submittedAt)} | 채점:{" "}
-                        {formatDate(sampleGradingResult.gradedAt)}
+                        마감일: {formatDate(assignmentDetail.dueDate)}
                       </p>
                     </div>
                     <div className="text-right">
                       <div className="flex items-center gap-2">
-                        <span className={`text-3xl font-bold ${getScoreColor(sampleGradingResult.totalScore)}`}>
-                          {sampleGradingResult.totalScore}
+                        <span className={`text-3xl font-bold ${getScoreColor(summary.score)}`}>
+                          {summary.score}
                         </span>
-                        <span className="text-lg text-gray-500">/ {sampleGradingResult.maxScore}</span>
-                        <Badge
-                          variant={
-                            sampleGradingResult.totalScore >= 80
-                              ? "success"
-                              : sampleGradingResult.totalScore >= 70
-                                ? "warning"
-                                : "destructive"
-                          }
-                          className="ml-2"
-                        >
-                          {getScoreGrade(sampleGradingResult.totalScore)}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-1 mt-1">
-                        {[...Array(5)].map((_, i) => (
-                          <Star
-                            key={i}
-                            className={`w-4 h-4 ${
-                              i < Math.floor(sampleGradingResult.totalScore / 20)
-                                ? "text-yellow-400 fill-current"
-                                : "text-gray-300"
-                            }`}
-                          />
-                        ))}
+                        <span className="text-lg text-gray-500">/ 100</span>
+                        <span className={`ml-2 px-2 py-1 rounded ${getScoreColor(summary.score)}`}>
+                          {getScoreGrade(summary.score)}
+                        </span>
                       </div>
                     </div>
                   </div>
-
-                  {/* 총평 */}
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
                       <MessageSquare className="w-4 h-4" />
                       교수님 총평
                     </h3>
                     <div className="p-4 bg-blue-50 rounded-lg border-l-4 border-blue-400">
-                      <p className="text-sm text-gray-700 leading-relaxed">{sampleGradingResult.overallFeedback}</p>
+                      <p className="text-sm text-gray-700 leading-relaxed">{summary.feedback}</p>
                     </div>
                   </div>
                 </div>
@@ -325,56 +237,57 @@ export default function ResultsPage({ params }: { params: { id: string } }) {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {sampleGradingResult.messages.map((message) => {
-                    const isUser = message.role === "user"
-                    return (
-                      <div key={message.id} className={`${isUser ? "ml-8" : ""}`}>
-                        {/* 메시지 */}
-                        <div className={`flex gap-3 p-4 rounded-lg ${isUser ? "bg-blue-50" : "bg-gray-50"}`}>
-                          <div
-                            className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                              isUser ? "bg-blue-500 text-white" : "bg-green-500 text-white"
-                            }`}
-                          >
-                            {isUser ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
+                  {summary.chatFeedbacks?.map((item: any, idx: number) => (
+                    <div key={idx} className="ml-8">
+                      <div className="flex gap-3 p-4 rounded-lg bg-blue-50">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-blue-500 text-white">
+                          <User className="w-4 h-4" />
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-sm">학생</span>
+                            <span className="text-xs text-gray-500">
+                              {formatDate(item.studentMessage.timestamp)}
+                            </span>
+                            {item.score && (
+                              <span className="ml-auto px-2 py-1 rounded bg-blue-200 text-blue-800">
+                                {item.score}/100
+                              </span>
+                            )}
                           </div>
-                          <div className="flex-1 space-y-1">
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-sm">
-                                {isUser ? "학생" : sampleGradingResult.patientInfo.name}
-                              </span>
-                              <span className="text-xs text-gray-500">
-                                {message.timestamp.toLocaleTimeString("ko-KR", {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
-                              </span>
-                              {isUser && message.score && (
-                                <Badge variant="default" className="ml-auto">
-                                  {message.score}/10
-                                </Badge>
-                              )}
+                          <div className="text-sm text-gray-800">{item.studentMessage.message}</div>
+                        </div>
+                      </div>
+                      {/* AI 메시지 */}
+                      <div className="flex gap-3 p-4 rounded-lg bg-gray-50 ml-8">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center bg-green-500 text-white">
+                          <Bot className="w-4 h-4" />
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-sm">{assignmentDetail.personaName}</span>
+                            <span className="text-xs text-gray-500">
+                              {formatDate(item.aiMessage.timestamp)}
+                            </span>
+                          </div>
+                          <div className="text-sm text-gray-800">{item.aiMessage.message}</div>
+                        </div>
+                      </div>
+                      {/* 교수 피드백 */}
+                      {item.feedback && (
+                        <div className="mt-2 ml-11 p-3 bg-yellow-50 rounded-lg border-l-4 border-yellow-400">
+                          <div className="flex items-start gap-2">
+                            <div className="flex-shrink-0 w-6 h-6 rounded-full bg-yellow-500 text-white flex items-center justify-center text-xs font-bold">
+                              교
                             </div>
-                            <div className="text-sm text-gray-800">{message.content}</div>
+                            <div className="flex-1">
+                              <p className="text-sm text-gray-700">{item.feedback}</p>
+                            </div>
                           </div>
                         </div>
-
-                        {/* 교수님 코멘트 (학생 메시지에만) */}
-                        {isUser && message.comment && (
-                          <div className="mt-2 ml-11 p-3 bg-yellow-50 rounded-lg border-l-4 border-yellow-400">
-                            <div className="flex items-start gap-2">
-                              <div className="flex-shrink-0 w-6 h-6 rounded-full bg-yellow-500 text-white flex items-center justify-center text-xs font-bold">
-                                교
-                              </div>
-                              <div className="flex-1">
-                                <p className="text-sm text-gray-700">{message.comment}</p>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
+                      )}
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
@@ -393,19 +306,15 @@ export default function ResultsPage({ params }: { params: { id: string } }) {
               <CardContent className="space-y-3">
                 <div>
                   <h3 className="font-semibold text-sm text-gray-600">과제명</h3>
-                  <p className="text-sm">{sampleGradingResult.assignmentTitle}</p>
+                  <p className="text-sm">{assignmentDetail.title}</p>
                 </div>
                 <div>
                   <h3 className="font-semibold text-sm text-gray-600">강의</h3>
-                  <p className="text-sm">{sampleGradingResult.courseName}</p>
+                  <p className="text-sm">{assignmentDetail.courseName}</p>
                 </div>
                 <div>
                   <h3 className="font-semibold text-sm text-gray-600">담당교수</h3>
-                  <p className="text-sm">{sampleGradingResult.professorName}</p>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-sm text-gray-600">학생</h3>
-                  <p className="text-sm">{sampleGradingResult.studentName}</p>
+                  <p className="text-sm">{assignmentDetail.professorName}</p>
                 </div>
               </CardContent>
             </Card>
@@ -421,23 +330,23 @@ export default function ResultsPage({ params }: { params: { id: string } }) {
               <CardContent className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="font-semibold text-lg">{sampleGradingResult.patientInfo.name}</h3>
-                    <p className="text-sm text-gray-600">{sampleGradingResult.patientInfo.age}세</p>
+                    <h3 className="font-semibold text-lg">{assignmentDetail.personaName}</h3>
+                    <p className="text-sm text-gray-600">{assignmentDetail.personaAge}세</p>
                   </div>
-                  <Badge variant="default">{getGenderText(sampleGradingResult.patientInfo.gender)}</Badge>
+                  <span className="px-2 py-1 rounded bg-blue-100 text-blue-800">
+                    {getGenderText(assignmentDetail.personaGender)}
+                  </span>
                 </div>
-
                 <div>
                   <h3 className="font-semibold text-sm text-gray-600">주요 증상</h3>
                   <p className="text-sm mt-1 p-2 bg-red-50 rounded border-l-4 border-red-200">
-                    {sampleGradingResult.patientInfo.symptom}
+                    {assignmentDetail.personaSymptom}
                   </p>
                 </div>
-
                 <div>
                   <h3 className="font-semibold text-sm text-gray-600">병력</h3>
                   <p className="text-sm mt-1 p-2 bg-blue-50 rounded border-l-4 border-blue-200">
-                    {sampleGradingResult.patientInfo.history}
+                    {assignmentDetail.personaHistory}
                   </p>
                 </div>
               </CardContent>
@@ -454,27 +363,17 @@ export default function ResultsPage({ params }: { params: { id: string } }) {
               <CardContent className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">총 대화 수</span>
-                  <span className="font-semibold">{sampleGradingResult.messages.length}개</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">학생 발언</span>
-                  <span className="font-semibold">
-                    {sampleGradingResult.messages.filter((msg) => msg.role === "user").length}개
-                  </span>
+                  <span className="font-semibold">{summary.chatFeedbacks?.length || 0}개</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">평균 점수</span>
-                  <span className={`font-semibold ${getScoreColor(averageMessageScore)}`}>
-                    {averageMessageScore.toFixed(1)}/10
+                  <span className={`font-semibold ${getScoreColor(avgScore)}`}>
+                    {avgScore.toFixed(1)}/100
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">제출일</span>
-                  <span className="text-sm">{formatDate(sampleGradingResult.submittedAt)}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">채점일</span>
-                  <span className="text-sm">{formatDate(sampleGradingResult.gradedAt)}</span>
+                  <span className="text-sm text-gray-600">마감일</span>
+                  <span className="text-sm">{formatDate(assignmentDetail.dueDate)}</span>
                 </div>
               </CardContent>
             </Card>
