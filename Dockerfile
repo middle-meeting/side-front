@@ -4,11 +4,11 @@ WORKDIR /app
 
 COPY package.json package-lock.json* ./
 
-RUN npm install --legacy-peer-deps
+RUN npm install --legacy-peer-deps --ignore-scripts
 
 COPY . .
 
-RUN npm run build
+RUN npm run compile && npm run build
 
 EXPOSE 3000
 
