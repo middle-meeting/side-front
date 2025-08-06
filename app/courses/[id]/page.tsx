@@ -26,6 +26,7 @@ import {
 import Link from "next/link"
 import { useRouter, useParams } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
+import { set } from "date-fns"
 
 // 타입 정의
 enum GenderType {
@@ -138,6 +139,8 @@ export default function CourseAssignmentsPage() {
   const [hasNextPage, setHasNextPage] = useState(true);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
 
+  const [isError, setIsError] = useState(false);
+
   const observerTarget = useRef<HTMLDivElement>(null);
 
   // 강의 상세 정보 가져오기
@@ -161,6 +164,7 @@ export default function CourseAssignmentsPage() {
 
   // 과제 목록 가져오기
   const fetchAssignments = useCallback(async (status: string, page: number, append: boolean = false) => {
+    if(isError) return;
     if (append) {
       setIsFetchingMore(true);
     } else {
@@ -177,7 +181,6 @@ export default function CourseAssignmentsPage() {
         credentials: "include",
       });
       const data: ApiResponse<AssignmentResponseData> = await response.json();
-
       if (response.ok && data.data && data.data.content) {
         if (append) {
           setAssignments((prevAssignments) => [...prevAssignments, ...data.data!.content]);
@@ -187,6 +190,7 @@ export default function CourseAssignmentsPage() {
         setHasNextPage(data.data.hasNext);
         setCurrentPage(data.data.page);
       } else {
+        setIsError(true);
         setErrorAssignments(data.message || "과제 목록을 불러오는데 실패했습니다.");
         if (!append) setAssignments([]);
       }
@@ -218,10 +222,11 @@ export default function CourseAssignmentsPage() {
     if (user && courseDetail) { // courseDetail이 로드된 후에 과제 로드 시작
       fetchAssignments(selectedStatus, 0, false);
     }
-  }, [user, courseDetail, selectedStatus, fetchAssignments]);
+  }, [user, courseDetail, selectedStatus, fetchAssignments, isError]);
 
   // 무한 스크롤 IntersectionObserver 설정
   useEffect(() => {
+    if(isError) return;
     if (!observerTarget.current) return;
 
     const observer = new IntersectionObserver(
@@ -238,7 +243,7 @@ export default function CourseAssignmentsPage() {
     return () => {
       observer.disconnect();
     };
-  }, [hasNextPage, isFetchingMore, loadingAssignments]);
+  }, [hasNextPage, isFetchingMore, loadingAssignments, isError]);
 
   // currentPage가 변경될 때 추가 데이터 로드
   useEffect(() => {

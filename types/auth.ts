@@ -35,7 +35,7 @@ export interface ProfessorRegisterRequest {
   school: string
   major: string
   grade: number
-  studentId: string
+  employeeId: string
   verificationCode: string
   // name: string
   // school: string

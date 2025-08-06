@@ -53,7 +53,7 @@ export default function RegisterPage() {
       confirmPassword: "",
       verificationCode: "",
       grade: 1,
-      studentId: "",
+      studentId: ""
     },
   })
 
@@ -177,7 +177,9 @@ export default function RegisterPage() {
                 <Input id="major" {...register("major")} placeholder="전공을 입력하세요" className="mt-1" />
                 {errors.major && <p className="text-xs text-red-500 mt-1">{errors.major.message}</p>}
               </div>
-              {selectedRole === UserRole.STUDENT && (
+
+              {/* 학생/교수별 추가 정보 */}
+            {selectedRole === UserRole.STUDENT ? (
                 <div className="grid grid-cols-2 gap-3">
                   <Controller
                     name="grade"
@@ -200,7 +202,17 @@ export default function RegisterPage() {
                     {"studentId" in errors && errors.studentId && <p className="text-xs text-red-500 mt-1">{errors.studentId.message}</p>}
                   </div>
                 </div>
-              )}
+              ) : (
+              <div className="space-y-2">
+                <Label htmlFor="employeeId">직번</Label>
+                <Input
+                  id="employeeId"
+                  {...register("employeeId")}
+                  placeholder="직번을 입력하세요"
+                />
+                {"employeeId" in errors && errors.employeeId && <p className="text-sm text-red-500">{errors.employeeId.message}</p>}
+              </div>
+            )}
               <div>
                 <Label htmlFor="email">이메일 (아이디)</Label>
                 <div className="flex gap-2 mt-1">
