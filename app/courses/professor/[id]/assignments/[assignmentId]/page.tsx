@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -20,145 +20,56 @@ import {
   AlertCircle,
   XCircle,
   GraduationCap,
+  Loader2
 } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/contexts/auth-context"
+import type {
+  Prescription,
+  ProfessorAssignmentDetailResponseDto as AssignmentDetail
+} from "@/types/assignmentProfessor"
+
+interface ApiResponse<T> {
+  status: string;
+  code: number;
+  message: string;
+  data: T | null;
+  error: any;
+}
 
 // 학생 제출 상태 타입
 type SubmissionStatus = "graded" | "needs_grading" | "not_submitted"
 
+// 수강생들의 제출 및 채점 현황 타입
+interface CourseAndSubmissionStatus {
+  enrolledCount: number
+  evaluatedCount: number
+  evaluationRequiredCount: number
+  notSubmittedCount: number
+}
+
 // 학생 제출 정보 타입
 interface StudentSubmission {
-  studentId: number
+  accountId: number
   studentName: string
-  studentNumber: string
+  studentId: string
   email: string
   status: SubmissionStatus
   submittedAt?: string
-  turnCount?: number
+  turns?: number
   score?: number
-  finalDiagnosis?: string
-  prescription?: string
+  primaryDiagnosis?: string
+  prescriptions?: Prescription[]
 }
 
-// 과제 정보 타입
-interface AssignmentDetail {
-  id: number
-  title: string
-  description: string
-  createdAt: string
-  dueDate: string
-  maxTurns: number
-  patientInfo: {
-    name: string
-    age: number
-    gender: "MALE" | "FEMALE"
-    address: string
-  }
-  totalStudents: number
-  submissions: StudentSubmission[]
-}
-
-// 샘플 데이터
-const sampleAssignment: AssignmentDetail = {
-  id: 1,
-  title: "급성 심근경색 환자 진단",
-  description:
-    "55세 남성 환자가 급성 흉통을 주소로 응급실에 내원하였습니다. 환자와의 대화를 통해 병력을 청취하고 적절한 진단과 치료 계획을 수립하세요.",
-  createdAt: "2024-01-15T09:00:00",
-  dueDate: "2024-01-25T23:59:59",
-  maxTurns: 10,
-  patientInfo: {
-    name: "김철수",
-    age: 55,
-    gender: "MALE",
-    address: "서울시 강남구",
-  },
-  totalStudents: 45,
-  submissions: [
-    {
-      studentId: 1,
-      studentName: "김민수",
-      studentNumber: "2020123001",
-      email: "minsu.kim@university.ac.kr",
-      status: "needs_grading",
-      submittedAt: "2024-01-18T14:30:00",
-      turnCount: 8,
-      finalDiagnosis: "급성 심근경색",
-      prescription: "아스피린, 클로피도그렐",
-    },
-    {
-      studentId: 2,
-      studentName: "이지영",
-      studentNumber: "2020123002",
-      email: "jiyoung.lee@university.ac.kr",
-      status: "needs_grading",
-      submittedAt: "2024-01-19T10:15:00",
-      turnCount: 6,
-      finalDiagnosis: "불안정 협심증",
-      prescription: "니트로글리세린, 베타차단제",
-    },
-    {
-      studentId: 3,
-      studentName: "박서준",
-      studentNumber: "2020123003",
-      email: "seojun.park@university.ac.kr",
-      status: "not_submitted",
-    },
-    {
-      studentId: 4,
-      studentName: "최서연",
-      studentNumber: "2020123004",
-      email: "seoyeon.choi@university.ac.kr",
-      status: "graded",
-      submittedAt: "2024-01-17T16:45:00",
-      turnCount: 9,
-      score: 92,
-      finalDiagnosis: "급성 심근경색",
-      prescription: "아스피린, 클로피도그렐, ACE 억제제",
-    },
-    {
-      studentId: 5,
-      studentName: "정현우",
-      studentNumber: "2020123005",
-      email: "hyunwoo.jung@university.ac.kr",
-      status: "needs_grading",
-      submittedAt: "2024-01-20T08:20:00",
-      turnCount: 7,
-      finalDiagnosis: "급성 심근경색",
-      prescription: "아스피린, 스타틴",
-    },
-    {
-      studentId: 6,
-      studentName: "한소희",
-      studentNumber: "2020123006",
-      email: "sohee.han@university.ac.kr",
-      status: "not_submitted",
-    },
-    {
-      studentId: 7,
-      studentName: "윤태영",
-      studentNumber: "2020123007",
-      email: "taeyoung.yoon@university.ac.kr",
-      status: "graded",
-      submittedAt: "2024-01-16T20:30:00",
-      turnCount: 10,
-      score: 88,
-      finalDiagnosis: "급성 심근경색",
-      prescription: "아스피린, 클로피도그렐",
-    },
-    {
-      studentId: 8,
-      studentName: "강민지",
-      studentNumber: "2020123008",
-      email: "minji.kang@university.ac.kr",
-      status: "needs_grading",
-      submittedAt: "2024-01-21T12:00:00",
-      turnCount: 5,
-      finalDiagnosis: "심근염",
-      prescription: "소염제, 안정",
-    },
-  ],
+interface StudentSubmissionResponseDto {
+  content: StudentSubmission[]
+  page: number
+  size: number
+  hasNext: boolean
+  hasPrevious: boolean
+  first: boolean
+  last: boolean
 }
 
 export default function AssignmentDetailPage() {
@@ -169,10 +80,20 @@ export default function AssignmentDetailPage() {
   const courseId = Number.parseInt(params.id as string)
   const assignmentId = Number.parseInt(params.assignmentId as string)
 
-  const [assignment] = useState<AssignmentDetail>(sampleAssignment)
-  const [filteredSubmissions, setFilteredSubmissions] = useState<StudentSubmission[]>(assignment.submissions)
+  const [assignment, setAssignment] = useState<AssignmentDetail>(null)
+  const [stats, setCourseAndSubmissionStatus] = useState<CourseAndSubmissionStatus>(null)
+  const [filteredSubmissions, setFilteredSubmissions] = useState<StudentSubmission[]>([])
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [searchTerm, setSearchTerm] = useState("")
+
+  const [isError, setIsError] = useState(false);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
+  const [loadingSubmissions, setLoadingSubmissions] = useState(true);
+  const [errorSubmissions, setErrorSubmissions] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [hasNextPage, setHasNextPage] = useState(true);
+
+  const observerTarget = useRef<HTMLDivElement>(null);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("ko-KR", {
@@ -218,35 +139,146 @@ export default function AssignmentDetailPage() {
     return "text-red-600"
   }
 
-  // 통계 계산
-  const stats = {
-    total: assignment.totalStudents,
-    graded: assignment.submissions.filter((s) => s.status === "graded").length,
-    needsGrading: assignment.submissions.filter((s) => s.status === "needs_grading").length,
-    notSubmitted: assignment.submissions.filter((s) => s.status === "not_submitted").length,
-  }
+  const fetchFilteredSubmissions = useCallback(async (status: string, page: number, append: boolean = false) => {
+    if (isError) return
+    if (append) {
+      setIsFetchingMore(true)
+    } else {
+      setLoadingSubmissions(true)
+      setFilteredSubmissions([]) // 새 필터 또는 첫 로드 시 초기화
+      setCurrentPage(0)
+      setHasNextPage(true)
+    }
+    
+    try {
+      const response = await fetch(`/api/professor/courses/${courseId}/assignments/${assignmentId}/submissions?page=${page}&status=${status}`, {
+        credentials: "include",
+      })
+
+      const data: ApiResponse<StudentSubmissionResponseDto> = await response.json()
+      if (response.ok && data.data && data.data.content) {
+        if (append) {
+          setFilteredSubmissions((prevSubmissions) => [...prevSubmissions, ...data.data!.content])
+        } else {
+          setFilteredSubmissions(data.data.content)
+        }
+        setHasNextPage(data.data.hasNext)
+        setCurrentPage(data.data.page)
+      } else {
+        setIsError(true)
+        setErrorSubmissions(data.message || "제출 목록을 불러오는데 실패했습니다");
+        if (!append) setFilteredSubmissions([])
+      }
+    } catch (error) {
+      console.error("Failed to fetch submissions:", error);
+      setErrorSubmissions("제출 목록을 불러오는데 실패했습니다");
+      if (!append) setFilteredSubmissions([])
+    } finally {
+      if (append) {
+        setIsFetchingMore(false)
+      }
+      else {
+        setLoadingSubmissions(false)
+      }
+    }
+  }, [courseId, assignmentId])
+
+  useEffect(() => {
+    const fetchAssignment = async () => {
+      try {
+        const response = await fetch(`/api/professor/courses/${courseId}/assignments/${assignmentId}`)
+        if (!response.ok) {
+          throw new Error("Failed to fetch assignment data")
+        }
+
+        const result = await response.json()
+        if (result.status === "OK") {
+          setAssignment(result.data)
+        } else {
+          throw new Error(result.message || "Failed to fetch assignment data")
+        }
+      } catch (error) {
+        console.error("과제정보 조회 실패:", error)
+      }
+    }
+
+    fetchAssignment()
+
+    const fetchCourseAndSubmissionStastus = async () => {
+      try {
+        const response = await fetch(`/api/professor/courses/${courseId}/assignments/${assignmentId}/submissions/status`)
+        if (!response.ok) {
+          throw new Error("Failed to fetch submission's status data")
+        }
+
+        const result = await response.json()
+        if (result.status === "OK") {
+          setCourseAndSubmissionStatus(result.data)
+        } else {
+          throw new Error(result.message || "Failed to fetch submission's status data")
+        }
+      } catch (error) {
+        console.error("과제 제출 현황 조회 실패:", error)
+      }
+    }
+
+    fetchCourseAndSubmissionStastus()
+  }, [courseId, assignmentId])
+
+  // 무한 스크롤 IntersectionObserver 설정
+  useEffect(() => {
+    if(isError) return
+    if (!observerTarget.current) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingMore && !loadingSubmissions) {
+          setCurrentPage((prevPage) => prevPage + 1)
+        }
+      },
+      { threshold: 1.0 }
+    );
+
+    observer.observe(observerTarget.current)
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [hasNextPage, isFetchingMore, loadingSubmissions, isError])
+
+  useEffect(() => {
+    fetchFilteredSubmissions(statusFilter, 0, false)
+  }, [statusFilter, fetchFilteredSubmissions])
+
+  // currentPage가 변경될 때 추가 데이터 로드
+  useEffect(() => {
+    if (currentPage > 0 && hasNextPage && !isFetchingMore && !loadingSubmissions) {
+      fetchFilteredSubmissions(statusFilter, currentPage, true)
+    }
+  }, [currentPage, statusFilter, fetchFilteredSubmissions, hasNextPage, isFetchingMore, loadingSubmissions])
+
 
   // 필터링 및 검색
-  useEffect(() => {
-    let filtered = assignment.submissions
+  // useEffect(() => {
+  //   let filtered = filteredSubmissions
 
-    // 상태 필터
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((submission) => submission.status === statusFilter)
-    }
+  //   // 상태 필터
+  //   if (statusFilter !== "all") {
+  //     filtered = filtered.filter((submission) => submission.status === statusFilter)
+  //   }
 
-    // 검색 필터
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (submission) =>
-          submission.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          submission.studentNumber.includes(searchTerm) ||
-          submission.email.toLowerCase().includes(searchTerm.toLowerCase()),
-      )
-    }
+  //   // 검색 필터
+  //   if (searchTerm) {
+  //     filtered = filtered.filter(
+  //       (submission) =>
+  //         submission.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  //         submission.studentId.includes(searchTerm) ||
+  //         submission.email.toLowerCase().includes(searchTerm.toLowerCase()),
+  //     )
+  //   }
 
-    setFilteredSubmissions(filtered)
-  }, [statusFilter, searchTerm, assignment.submissions])
+  //   setFilteredSubmissions(filtered)
+  // }, [statusFilter, searchTerm, filteredSubmissions])
 
   const handleExportExcel = () => {
     console.log("Excel 내보내기")
@@ -260,6 +292,17 @@ export default function AssignmentDetailPage() {
   }, [user, isLoading, router])
 
   if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <BookOpen className="w-12 h-12 text-blue-600 mx-auto mb-4 animate-pulse" />
+          <p className="text-gray-600">로딩 중...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!assignment || !filteredSubmissions || !stats) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -303,12 +346,12 @@ export default function AssignmentDetailPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <h2 className="text-xl font-bold text-gray-900 mb-4">{assignment.title}</h2>
-              <p className="text-gray-700 mb-4">{assignment.description}</p>
+              <p className="text-gray-700 mb-4">{assignment.objective}</p>
               <div className="space-y-2 text-sm text-gray-600">
-                <div className="flex items-center gap-2">
+                {/* <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4" />
                   생성일: {formatDate(assignment.createdAt)}
-                </div>
+                </div> */}
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4" />
                   마감일: {formatDate(assignment.dueDate)}
@@ -329,19 +372,15 @@ export default function AssignmentDetailPage() {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-600">이름:</span>
-                  <span className="font-medium">{assignment.patientInfo.name}</span>
+                  <span className="font-medium">{assignment.personaName}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">나이:</span>
-                  <span className="font-medium">{assignment.patientInfo.age}세</span>
+                  <span className="font-medium">{assignment.personaAge}세</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">성별:</span>
-                  <span className="font-medium">{getGenderText(assignment.patientInfo.gender)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">주소:</span>
-                  <span className="font-medium">{assignment.patientInfo.address}</span>
+                  <span className="font-medium">{getGenderText(assignment.personaGender)}</span>
                 </div>
               </div>
             </div>
@@ -356,7 +395,7 @@ export default function AssignmentDetailPage() {
                 <User className="w-6 h-6 text-blue-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.enrolledCount}</p>
                 <p className="text-sm text-gray-600">전체 수강생</p>
               </div>
             </CardContent>
@@ -368,7 +407,7 @@ export default function AssignmentDetailPage() {
                 <CheckCircle className="w-6 h-6 text-green-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-green-600">{stats.graded}</p>
+                <p className="text-2xl font-bold text-green-600">{stats.evaluatedCount}</p>
                 <p className="text-sm text-gray-600">채점완료</p>
               </div>
             </CardContent>
@@ -380,7 +419,7 @@ export default function AssignmentDetailPage() {
                 <AlertCircle className="w-6 h-6 text-orange-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-orange-600">{stats.needsGrading}</p>
+                <p className="text-2xl font-bold text-orange-600">{stats.evaluationRequiredCount}</p>
                 <p className="text-sm text-gray-600">채점필요</p>
               </div>
             </CardContent>
@@ -392,7 +431,7 @@ export default function AssignmentDetailPage() {
                 <XCircle className="w-6 h-6 text-red-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-red-600">{stats.notSubmitted}</p>
+                <p className="text-2xl font-bold text-red-600">{stats.notSubmittedCount}</p>
                 <p className="text-sm text-gray-600">미제출</p>
               </div>
             </CardContent>
@@ -450,13 +489,30 @@ export default function AssignmentDetailPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredSubmissions.length > 0 ? (
+                  {loadingSubmissions && filteredSubmissions.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                        제출 목록을 불러오는 중...
+                      </TableCell>
+                    </TableRow>
+                    // <TableRow>
+                    //   <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                    //     검색 결과가 없습니다.
+                    //   </TableCell>
+                    // </TableRow>
+                  ) : errorSubmissions ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                        <p>{errorSubmissions}</p>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
                     filteredSubmissions.map((submission) => (
-                      <TableRow key={submission.studentId} className="hover:bg-gray-50">
+                      <TableRow key={submission.accountId} className="hover:bg-gray-50">
                         <TableCell>
                           <div>
                             <div className="font-medium">{submission.studentName}</div>
-                            <div className="text-sm text-gray-600">{submission.studentNumber}</div>
+                            <div className="text-sm text-gray-600">{submission.studentId}</div>
                             <div className="text-xs text-gray-500">{submission.email}</div>
                           </div>
                         </TableCell>
@@ -474,8 +530,8 @@ export default function AssignmentDetailPage() {
                           )}
                         </TableCell>
                         <TableCell>
-                          {submission.turnCount ? (
-                            <span className="text-sm">{submission.turnCount}턴</span>
+                          {submission.turns ? (
+                            <span className="text-sm">{submission.turns}턴</span>
                           ) : (
                             <span className="text-gray-400">-</span>
                           )}
@@ -490,15 +546,19 @@ export default function AssignmentDetailPage() {
                           )}
                         </TableCell>
                         <TableCell>
-                          {submission.finalDiagnosis ? (
-                            <span className="text-sm">{submission.finalDiagnosis}</span>
+                          {submission.primaryDiagnosis ? (
+                            <span className="text-sm">{submission.primaryDiagnosis}</span>
                           ) : (
                             <span className="text-gray-400">-</span>
                           )}
                         </TableCell>
                         <TableCell>
-                          {submission.prescription ? (
-                            <span className="text-sm">{submission.prescription}</span>
+                          {submission.prescriptions ? (
+                            submission.prescriptions.map((prescription) => {
+                              const drugName = prescription.drugName
+                              return (<span className="text-sm">{drugName}</span>)
+                            })
+                            // <span className="text-sm">{submission.prescriptions}</span>
                           ) : (
                             <span className="text-gray-400">-</span>
                           )}
@@ -506,7 +566,7 @@ export default function AssignmentDetailPage() {
                         <TableCell className="text-center">
                           {submission.status !== "not_submitted" ? (
                             <Link
-                              href={`/courses/professor/${courseId}/assignments/${assignmentId}/students/${submission.studentId}`}
+                              href={`/courses/professor/${courseId}/assignments/${assignmentId}/students/${submission.accountId}`}
                             >
                               <Button variant="outline" size="sm">
                                 <FileText className="w-4 h-4 mr-2" />
@@ -519,15 +579,26 @@ export default function AssignmentDetailPage() {
                         </TableCell>
                       </TableRow>
                     ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-gray-500">
-                        검색 결과가 없습니다.
-                      </TableCell>
-                    </TableRow>
                   )}
                 </TableBody>
               </Table>
+              {/* 무한 스크롤 트리거 및 로딩 메시지 */}
+              <div ref={observerTarget} className="py-4 text-center">
+                {isFetchingMore && <Loader2 className="w-6 h-6 animate-spin text-blue-500 mx-auto" />}
+                {!hasNextPage && !loadingSubmissions && filteredSubmissions.length > 0 && (
+                  <p className="text-gray-500">더 이상 제출목록이 없습니다.</p>
+                )}
+              </div>
+              {/* 제출목록이 없을 때 */}
+              {filteredSubmissions.length === 0 && !loadingSubmissions && !errorSubmissions && (
+                <div className="text-center py-12">
+                  <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    {statusFilter === "all" ? "등록된 수강생의 제출이 없습니다" : "해당 상태의 제출목록이 없습니다"}
+                  </h3>
+                  <p className="text-gray-600">{statusFilter !== "all" && "다른 상태를 선택해보세요."}</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
