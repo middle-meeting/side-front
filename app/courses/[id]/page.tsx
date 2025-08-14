@@ -56,8 +56,12 @@ interface CourseDetail {
   professorName: string
   semester: string
   description: string
-  courseCode: string
-  credits: number
+  // courseCode: string
+  // credits: number
+  // totalStudents: number
+  // schedule: string
+  // classroom: string
+  // department: string
 }
 
 interface AssignmentResponseData {
@@ -148,18 +152,25 @@ export default function CourseAssignmentsPage() {
     setLoadingCourseDetail(true);
     setErrorCourseDetail(null);
     // API 호출 대신 하드코딩된 데이터 사용
-    setTimeout(() => {
-      setCourseDetail({
-        id: parseInt(courseId),
-        name: "기본 강의 제목",
-        professorName: "김교수",
-        semester: "2024년 1학기",
-        description: "이 강의는 아직 백엔드 API가 개발되지 않아 하드코딩된 데이터로 표시됩니다.",
-        courseCode: "CS000",
-        credits: 3,
-      });
-      setLoadingCourseDetail(false);
-    }, 500); // 0.5초 지연 시뮬레이션
+     // API 호출 대신 하드코딩된 데이터 사용
+      try {
+        // const statusQuery = status === "all" ? "" : `&status=${status}`;
+        const response = await fetch(`/api/student/courses/${courseId}`, {
+          credentials: "include",
+        });
+        const data: ApiResponse<CourseDetail> = await response.json();
+        console.log(data);
+        if (response.ok && data.data) {
+          setCourseDetail(data.data);
+        } else {
+          setErrorCourseDetail(data.message || "강의 상세를 불러오는데 실패했습니다.");
+        }
+      } catch (error) {
+        console.error("Failed to fetch assignments:", error);
+        setErrorCourseDetail("과제 목록을 불러오는 중 오류가 발생했습니다.");
+      } finally {
+        setLoadingCourseDetail(false);
+      }
   }, [courseId]);
 
   // 과제 목록 가져오기
