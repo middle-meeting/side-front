@@ -56,39 +56,41 @@ interface CourseDetail {
   professorName: string
   semester: string
   description: string
-  courseCode: string
-  credits: number
+  totalStudents: number
+  schedule: string
+  classroom: string
+  department: string
 }
 
 // 교수용 강의 데이터 (실제로는 API에서 가져올 데이터)
-const professorCourseData: Record<number, ProfessorCourse> = {
-  1: {
-    id: 1,
-    name: "내과학 실습",
-    semester: "2024-1학기",
-    courseCode: "MED301",
-    credits: 3,
-    description: "내과 질환의 진단과 치료에 대한 실습 과정",
-    totalStudents: 45,
-    totalAssignments: 8,
-    department: "의학과",
-    schedule: "월, 수 14:00-16:00",
-    classroom: "의학관 301호",
-  },
-  2: {
-    id: 2,
-    name: "임상진단학",
-    semester: "2024-1학기",
-    courseCode: "MED401",
-    credits: 2,
-    description: "임상에서의 진단 방법과 검사 해석",
-    totalStudents: 38,
-    totalAssignments: 6,
-    department: "의학과",
-    schedule: "화, 목 10:00-12:00",
-    classroom: "의학관 205호",
-  },
-}
+// const professorCourseData: Record<number, ProfessorCourse> = {
+//   1: {
+//     id: 1,
+//     name: "내과학 실습",
+//     semester: "2024-1학기",
+//     courseCode: "MED301",
+//     credits: 3,
+//     description: "내과 질환의 진단과 치료에 대한 실습 과정",
+//     totalStudents: 45,
+//     totalAssignments: 8,
+//     department: "의학과",
+//     schedule: "월, 수 14:00-16:00",
+//     classroom: "의학관 301호",
+//   },
+//   2: {
+//     id: 2,
+//     name: "임상진단학",
+//     semester: "2024-1학기",
+//     courseCode: "MED401",
+//     credits: 2,
+//     description: "임상에서의 진단 방법과 검사 해석",
+//     totalStudents: 38,
+//     totalAssignments: 6,
+//     department: "의학과",
+//     schedule: "화, 목 10:00-12:00",
+//     classroom: "의학관 205호",
+//   },
+// }
 
 // 샘플 과제 데이터
 const sampleAssignments: Assignment[] = [
@@ -192,7 +194,7 @@ export default function ProfessorCoursePage() {
   const [selectedStatus, setSelectedStatus] = useState<string>("all")
 
   const courseId =params.id as string;
-  const course = professorCourseData[courseId]
+  // const course = professorCourseData[courseId]
 
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loadingAssignments, setLoadingAssignments] = useState(true);
@@ -215,18 +217,24 @@ export default function ProfessorCoursePage() {
       setLoadingCourseDetail(true);
       setErrorCourseDetail(null);
       // API 호출 대신 하드코딩된 데이터 사용
-      setTimeout(() => {
-        setCourseDetail({
-          id: parseInt(courseId),
-          name: "기본 강의 제목",
-          professorName: "김교수",
-          semester: "2024년 1학기",
-          description: "이 강의는 아직 백엔드 API가 개발되지 않아 하드코딩된 데이터로 표시됩니다.",
-          courseCode: "CS000",
-          credits: 3,
+      try {
+        // const statusQuery = status === "all" ? "" : `&status=${status}`;
+        const response = await fetch(`/api/professor/courses/${courseId}`, {
+          credentials: "include",
         });
+        const data: ApiResponse<CourseDetail> = await response.json();
+        console.log(data);
+        if (response.ok && data.data) {
+          setCourseDetail(data.data);
+        } else {
+          setErrorCourseDetail(data.message || "강의 상세를 불러오는데 실패했습니다.");
+        }
+      } catch (error) {
+        console.error("Failed to fetch assignments:", error);
+        setErrorCourseDetail("과제 목록을 불러오는 중 오류가 발생했습니다.");
+      } finally {
         setLoadingCourseDetail(false);
-      }, 500); // 0.5초 지연 시뮬레이션
+      }
     }, [courseId]);
 
   // 필터링된 과제 목록
@@ -365,7 +373,7 @@ export default function ProfessorCoursePage() {
     )
   }
 
-  if (!user || user.role !== "PROFESSOR" || !course) {
+  if (!user || user.role !== "PROFESSOR" || !courseDetail) {
     return null
   }
 
@@ -384,8 +392,8 @@ export default function ProfessorCoursePage() {
               </Link>
               <BookOpen className="w-6 h-6 text-blue-600 mr-3" />
               <div>
-                <h1 className="text-lg font-semibold text-gray-900">{course.name}</h1>
-                <p className="text-sm text-gray-600">{course.courseCode}</p>
+                <h1 className="text-lg font-semibold text-gray-900">{courseDetail.name}</h1>
+                {/* <p className="text-sm text-gray-600">{course.courseCode}</p> */}
               </div>
             </div>
             <div className="flex items-center space-x-4">
@@ -400,29 +408,29 @@ export default function ProfessorCoursePage() {
         <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
           <div className="flex justify-between items-start mb-4">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">{course.name}</h1>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">{courseDetail.name}</h1>
               <div className="flex items-center gap-4 text-sm text-gray-600">
                 <span className="flex items-center gap-1">
                   <Calendar className="w-4 h-4" />
-                  {course.semester}
+                  {courseDetail.semester}
                 </span>
                 <span className="flex items-center gap-1">
                   <Users className="w-4 h-4" />
-                  수강생 {course.totalStudents}명
+                  수강생 {courseDetail.totalStudents}명
                 </span>
                 <span className="flex items-center gap-1">
                   <Clock className="w-4 h-4" />
-                  {course.schedule}
+                  {courseDetail.schedule}
                 </span>
                 <span className="flex items-center gap-1">
                   <MapPin className="w-4 h-4" />
-                  {course.classroom}
+                  {courseDetail.classroom}
                 </span>
               </div>
             </div>
-            <Badge variant="default">{course.department}</Badge>
+            <Badge variant="default">{courseDetail.department}</Badge>
           </div>
-          <p className="text-gray-700">{course.description}</p>
+          <p className="text-gray-700">{courseDetail.description}</p>
         </div>
 
         {/* 필터 및 새 과제 버튼 */}
