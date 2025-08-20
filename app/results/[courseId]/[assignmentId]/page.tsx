@@ -318,17 +318,11 @@ export default function ResultsPage({ params }: { params: Promise<{ courseId: st
                       </CardContent>
                     </Card>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
                     <div>
                       <Label className="text-sm font-medium text-gray-600">최종 판정</Label>
                       <p className="text-sm mt-1 p-3 bg-gray-50 rounded min-h-[80px]">
                         {summary.finalJudgment || "-"}
-                      </p>
-                    </div>
-                    <div>
-                      <Label className="text-sm font-medium text-gray-600">특이사항</Label>
-                      <p className="text-sm mt-1 p-3 bg-gray-50 rounded min-h-[80px]">
-                        {summary.notes || "-"}
                       </p>
                     </div>
                   </div>
