@@ -515,10 +515,13 @@ export default function CourseAssignmentsPage() {
                     )}
 
                     {assignment.status === AssignmentStatus.GRADED && (
-                      <Button className="w-full mt-4" disabled variant="outline">
+                      <Link href={`/results/${courseDetail.id}/${assignment.id}`}>
+                        <Button className="w-full mt-4" variant="outline">
                           <Eye className="w-4 h-4 mr-2" />
                           결과 보기
-                      </Button>
+                          <ChevronRight className="w-4 h-4 ml-2" />
+                        </Button>
+                      </Link>
                     )}
                   </CardContent>
                 </Card>
